@@ -25,7 +25,8 @@ const io = new Server(httpServer, {
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['polling', 'websocket'] // Try polling first, then websocket
+  transports: ['websocket', 'polling'],
+  path: '/socket.io/'
 });
 
 // Enable CORS for regular HTTP requests
@@ -40,6 +41,15 @@ app.use(express.json());
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// Debug endpoint to check current games
+app.get('/debug/games', (req, res) => {
+  const gameManager = req.app.get('gameManager');
+  res.json({
+    games: Array.from(gameManager.games.entries()),
+    players: Array.from(gameManager.players.entries())
+  });
 });
 
 setupSocketHandlers(io);
