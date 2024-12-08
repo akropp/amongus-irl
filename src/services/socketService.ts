@@ -20,8 +20,9 @@ class SocketService {
       timeout: 10000,
       autoConnect: true,
       transports: ['polling', 'websocket'],
-      path: '/socket.io',
-      withCredentials: true
+      withCredentials: false, // Changed to false
+      forceNew: true,
+      path: '/socket.io'
     });
 
     this.setupListeners();

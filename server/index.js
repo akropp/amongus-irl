@@ -20,9 +20,8 @@ const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
-    credentials: true,
-    allowedHeaders: ["my-custom-header"],
-    transports: ['websocket', 'polling']
+    credentials: false, // Changed to false
+    allowedHeaders: ["*"]
   },
   allowEIO3: true,
   pingTimeout: 60000,
@@ -38,7 +37,7 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
+  credentials: false, // Changed to false
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
