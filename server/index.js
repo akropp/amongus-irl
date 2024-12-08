@@ -20,12 +20,16 @@ const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["my-custom-header"],
+    transports: ['websocket', 'polling']
   },
+  allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000
 });
 
+// Enable CORS for regular HTTP requests
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -34,7 +38,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -52,6 +58,9 @@ app.get('/debug/games', (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// Add preflight handler for websocket upgrade
+app.options('*', cors());
 
 setupSocketHandlers(io);
 

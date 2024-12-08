@@ -17,7 +17,10 @@ class SocketService {
       reconnectionDelay: 2000,
       autoConnect: true,
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
+      extraHeaders: {
+        "my-custom-header": "value"
+      }
     });
 
     this.setupListeners();
@@ -37,6 +40,11 @@ class SocketService {
 
     this.socket.on('connect_error', (error) => {
       console.error('Connection error:', error);
+      // Try to reconnect with polling if websocket fails
+      if (this.socket.io.opts.transports.includes('websocket')) {
+        console.log('Falling back to polling transport');
+        this.socket.io.opts.transports = ['polling'];
+      }
     });
 
     this.socket.on('players-updated', (players: Player[]) => {
@@ -64,6 +72,10 @@ class SocketService {
 
     this.socket.on('reconnect_attempt', (attemptNumber) => {
       console.log('Reconnection attempt:', attemptNumber);
+    });
+
+    this.socket.on('transport', (transport) => {
+      console.log('Transport changed to:', transport);
     });
   }
 
