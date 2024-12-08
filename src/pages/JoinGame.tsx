@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ghost } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
@@ -7,12 +7,26 @@ export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const navigate = useNavigate();
   const store = useGameStore();
+
+  useEffect(() => {
+    // Check socket connection
+    if (!store.socketService.isConnected()) {
+      setIsConnecting(true);
+      store.socketService.reconnect();
+    }
+  }, [store.socketService]);
 
   const handleJoinGame = () => {
     setError('');
     
+    if (!store.socketService.isConnected()) {
+      setError('Not connected to server. Please try again.');
+      return;
+    }
+
     // Normalize game codes to uppercase for comparison
     const normalizedInputCode = gameCode.trim().toUpperCase();
     const normalizedStoreCode = store.gameCode.trim().toUpperCase();
@@ -26,6 +40,11 @@ export default function JoinGame() {
       setError('Please enter your name');
       return;
     }
+
+    console.log('Attempting to join game:', {
+      inputCode: normalizedInputCode,
+      storeCode: normalizedStoreCode
+    });
 
     if (normalizedInputCode !== normalizedStoreCode) {
       setError('Invalid game code');
@@ -65,6 +84,12 @@ export default function JoinGame() {
         </div>
         
         <div className="mt-8 space-y-6">
+          {isConnecting && (
+            <div className="bg-blue-900/50 text-blue-200 p-3 rounded-md text-sm">
+              Connecting to server...
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
               <label htmlFor="gameCode" className="block text-sm font-medium text-gray-300">
@@ -107,10 +132,10 @@ export default function JoinGame() {
 
           <button
             onClick={handleJoinGame}
-            disabled={!gameCode || !playerName}
+            disabled={!gameCode || !playerName || isConnecting}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Join Game
+            {isConnecting ? 'Connecting...' : 'Join Game'}
           </button>
         </div>
       </div>
