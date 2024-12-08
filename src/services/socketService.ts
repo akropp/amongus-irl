@@ -1,9 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { Player } from '../types/game';
 
-const SOCKET_URL = import.meta.env.PROD 
-  ? 'https://amongus-irl.onrender.com'
-  : 'http://localhost:3000';
+const SOCKET_URL = 'https://amongus-irl.onrender.com';
 
 class SocketService {
   private static instance: SocketService;
@@ -12,11 +10,14 @@ class SocketService {
   private gameCreatedCallback: ((data: { code: string }) => void) | null = null;
 
   private constructor() {
+    console.log('Initializing socket connection to:', SOCKET_URL);
+    
     this.socket = io(SOCKET_URL, {
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
       autoConnect: true,
-      withCredentials: true
+      withCredentials: true,
+      transports: ['websocket', 'polling']
     });
 
     this.setupListeners();
@@ -31,7 +32,7 @@ class SocketService {
 
   private setupListeners(): void {
     this.socket.on('connect', () => {
-      console.log('Connected to server');
+      console.log('Connected to server with socket ID:', this.socket.id);
     });
 
     this.socket.on('connect_error', (error) => {
@@ -54,6 +55,15 @@ class SocketService {
 
     this.socket.on('error', (error: { message: string }) => {
       console.error('Server error:', error);
+    });
+
+    // Additional debug events
+    this.socket.on('disconnect', (reason) => {
+      console.log('Disconnected:', reason);
+    });
+
+    this.socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log('Reconnection attempt:', attemptNumber);
     });
   }
 
