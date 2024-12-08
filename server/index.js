@@ -20,46 +20,27 @@ const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
-    credentials: false, // Changed to false
-    allowedHeaders: ["*"]
+    credentials: true
   },
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  transports: ['polling', 'websocket'] // Try polling first, then websocket
 });
 
 // Enable CORS for regular HTTP requests
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: false, // Changed to false
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS']
 }));
 
 app.use(express.json());
 
-// Debug endpoint to check game state
-app.get('/debug/games', (req, res) => {
-  const games = Array.from(gameManager.games.entries()).map(([code, game]) => ({
-    code,
-    players: gameManager.getPlayers(code),
-    ...game
-  }));
-  res.json(games);
-});
-
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-
-// Add preflight handler for websocket upgrade
-app.options('*', cors());
 
 setupSocketHandlers(io);
 
@@ -67,4 +48,13 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Allowed origins:', allowedOrigins);
+});
+
+// Handle process termination gracefully
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Closing HTTP server...');
+  httpServer.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 });
