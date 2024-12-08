@@ -5,12 +5,15 @@ const SOCKET_URL = 'https://amongus-irl.onrender.com';
 
 class SocketService {
   private static instance: SocketService;
-  private socket: Socket;
+  private socket: Socket | null = null;
   private playersUpdateCallback: ((players: Player[]) => void) | null = null;
   private gameCreatedCallback: ((data: { code: string }) => void) | null = null;
+  private joinGameSuccessCallback: ((data: { player: Player, gameCode: string }) => void) | null = null;
+  private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
   private connectionAttempts = 0;
   private readonly maxRetries = 5;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private isReconnecting = false;
 
   private constructor() {
     console.log('Initializing socket connection to:', SOCKET_URL);
@@ -18,26 +21,37 @@ class SocketService {
   }
 
   private initializeSocket(): void {
+    if (this.socket?.connected) {
+      console.log('Socket already connected, skipping initialization');
+      return;
+    }
+
     if (this.socket) {
+      this.socket.removeAllListeners();
       this.socket.close();
     }
 
+    console.log('Creating new socket connection...');
     this.socket = io(SOCKET_URL, {
       reconnectionAttempts: this.maxRetries,
       reconnectionDelay: 2000,
       timeout: 20000,
-      transports: ['websocket', 'polling'], // Try websocket first, then polling
+      transports: ['polling', 'websocket'],
       forceNew: true,
-      autoConnect: true
+      autoConnect: true,
+      path: '/socket.io/'
     });
 
     this.setupListeners();
   }
 
   private setupListeners(): void {
+    if (!this.socket) return;
+
     this.socket.on('connect', () => {
-      console.log('Connected to server');
+      console.log('Socket connected successfully');
       this.connectionAttempts = 0;
+      this.isReconnecting = false;
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
@@ -45,26 +59,14 @@ class SocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
-      this.connectionAttempts++;
-      
-      if (this.connectionAttempts >= this.maxRetries) {
-        console.log('Maximum connection attempts reached, will try to reconnect in 5 seconds');
-        if (!this.reconnectTimer) {
-          this.reconnectTimer = setTimeout(() => {
-            console.log('Attempting to reconnect...');
-            this.connectionAttempts = 0;
-            this.initializeSocket();
-          }, 5000);
-        }
-      }
+      console.error('Socket connection error:', error);
+      this.handleConnectionError();
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('Disconnected from server:', reason);
-      if (reason === 'io server disconnect') {
-        // Server initiated disconnect, try reconnecting
-        this.socket.connect();
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        this.handleConnectionError();
       }
     });
 
@@ -82,9 +84,43 @@ class SocketService {
       }
     });
 
+    this.socket.on('join-game-success', (data: { player: Player, gameCode: string }) => {
+      console.log('Join game success:', data);
+      if (this.joinGameSuccessCallback) {
+        this.joinGameSuccessCallback(data);
+      }
+    });
+
+    this.socket.on('join-game-error', (error: { message: string }) => {
+      console.error('Join game error:', error);
+      if (this.joinGameErrorCallback) {
+        this.joinGameErrorCallback(error);
+      }
+    });
+
     this.socket.on('error', (error: { message: string }) => {
       console.error('Server error:', error);
     });
+  }
+
+  private handleConnectionError(): void {
+    this.connectionAttempts++;
+    console.log(`Connection attempt ${this.connectionAttempts} failed`);
+    
+    if (this.connectionAttempts >= this.maxRetries && !this.isReconnecting) {
+      this.isReconnecting = true;
+      console.log('Maximum connection attempts reached, scheduling reconnect...');
+      
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+      }
+      
+      this.reconnectTimer = setTimeout(() => {
+        console.log('Attempting to reconnect...');
+        this.connectionAttempts = 0;
+        this.initializeSocket();
+      }, 5000);
+    }
   }
 
   public static getInstance(): SocketService {
@@ -95,18 +131,22 @@ class SocketService {
   }
 
   public createGame(code: string, maxPlayers: number, rooms: string[]): void {
-    if (!this.socket.connected) {
+    if (!this.socket?.connected) {
       console.log('Socket not connected, attempting to connect...');
-      this.socket.connect();
+      this.initializeSocket();
+      setTimeout(() => this.createGame(code, maxPlayers, rooms), 1000);
+      return;
     }
     console.log('Creating game:', { code, maxPlayers, rooms });
     this.socket.emit('create-game', { code, maxPlayers, rooms });
   }
 
   public joinGame(gameCode: string, player: Player): void {
-    if (!this.socket.connected) {
+    if (!this.socket?.connected) {
       console.log('Socket not connected, attempting to connect...');
-      this.socket.connect();
+      this.initializeSocket();
+      setTimeout(() => this.joinGame(gameCode, player), 1000);
+      return;
     }
     console.log('Joining game:', { gameCode, player });
     this.socket.emit('join-game', { gameCode, player });
@@ -120,13 +160,22 @@ class SocketService {
     this.gameCreatedCallback = callback;
   }
 
+  public onJoinGameSuccess(callback: (data: { player: Player, gameCode: string }) => void): void {
+    this.joinGameSuccessCallback = callback;
+  }
+
+  public onJoinGameError(callback: (error: { message: string }) => void): void {
+    this.joinGameErrorCallback = callback;
+  }
+
   public isConnected(): boolean {
-    return this.socket.connected;
+    return !!this.socket?.connected;
   }
 
   public reconnect(): void {
     console.log('Manually triggering reconnection...');
     this.connectionAttempts = 0;
+    this.isReconnecting = false;
     this.initializeSocket();
   }
 
@@ -135,7 +184,9 @@ class SocketService {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.socket.disconnect();
+    if (this.socket) {
+      this.socket.disconnect();
+    }
   }
 }
 

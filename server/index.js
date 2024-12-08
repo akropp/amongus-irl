@@ -25,8 +25,9 @@ const io = new Server(httpServer, {
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['websocket', 'polling'],
-  path: '/socket.io/'
+  transports: ['polling', 'websocket'],
+  path: '/socket.io/',
+  maxHttpBufferSize: 1e8
 });
 
 // Enable CORS for regular HTTP requests
@@ -45,10 +46,13 @@ app.get('/health', (req, res) => {
 
 // Debug endpoint to check current games
 app.get('/debug/games', (req, res) => {
-  const gameManager = req.app.get('gameManager');
+  const games = Array.from(io.sockets.adapter.rooms.entries())
+    .filter(([key]) => !key.startsWith('/'));
+  
   res.json({
-    games: Array.from(gameManager.games.entries()),
-    players: Array.from(gameManager.players.entries())
+    connections: io.engine.clientsCount,
+    rooms: games,
+    uptime: process.uptime()
   });
 });
 

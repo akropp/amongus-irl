@@ -7,17 +7,48 @@ export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const navigate = useNavigate();
   const store = useGameStore();
 
   useEffect(() => {
-    // Check socket connection
-    if (!store.socketService.isConnected()) {
-      setIsConnecting(true);
-      store.socketService.reconnect();
-    }
-  }, [store.socketService]);
+    const checkConnection = () => {
+      const isConnected = store.socketService.isConnected();
+      console.log('Socket connection status:', isConnected);
+      
+      if (!isConnected && connectionAttempts < 5) {
+        setIsConnecting(true);
+        setConnectionAttempts(prev => prev + 1);
+        store.socketService.reconnect();
+        
+        setTimeout(checkConnection, 2000);
+      } else if (isConnected) {
+        setIsConnecting(false);
+        setConnectionAttempts(0);
+      } else {
+        setError('Unable to connect to server. Please refresh the page.');
+        setIsConnecting(false);
+      }
+    };
+
+    checkConnection();
+
+    store.socketService.onJoinGameSuccess(({ player }) => {
+      console.log('Join game success:', player);
+      navigate(`/game/${player.id}`);
+    });
+
+    store.socketService.onJoinGameError((error) => {
+      console.error('Join game error:', error);
+      setError(error.message);
+    });
+
+    return () => {
+      setIsConnecting(false);
+      setConnectionAttempts(0);
+    };
+  }, [store.socketService, connectionAttempts, navigate]);
 
   const handleJoinGame = () => {
     setError('');
@@ -27,9 +58,7 @@ export default function JoinGame() {
       return;
     }
 
-    // Normalize game codes to uppercase for comparison
     const normalizedInputCode = gameCode.trim().toUpperCase();
-    const normalizedStoreCode = store.gameCode.trim().toUpperCase();
     
     if (!normalizedInputCode) {
       setError('Please enter a game code');
@@ -41,25 +70,10 @@ export default function JoinGame() {
       return;
     }
 
-    console.log('Attempting to join game:', {
+    console.log('Join game attempt:', {
       inputCode: normalizedInputCode,
-      storeCode: normalizedStoreCode
+      playerName: playerName.trim()
     });
-
-    if (normalizedInputCode !== normalizedStoreCode) {
-      setError('Invalid game code');
-      return;
-    }
-
-    if (store.players.length >= store.maxPlayers) {
-      setError('Game is full');
-      return;
-    }
-
-    if (store.players.some(p => p.name.toLowerCase() === playerName.trim().toLowerCase())) {
-      setError('Name already taken');
-      return;
-    }
 
     const newPlayer = {
       id: Math.random().toString(36).substring(2),
@@ -69,8 +83,7 @@ export default function JoinGame() {
       tasks: []
     };
     
-    store.addPlayer(newPlayer);
-    navigate(`/game/${newPlayer.id}`);
+    store.socketService.joinGame(normalizedInputCode, newPlayer);
   };
 
   return (
@@ -84,9 +97,17 @@ export default function JoinGame() {
         </div>
         
         <div className="mt-8 space-y-6">
-          {isConnecting && (
+          {isConnecting ? (
             <div className="bg-blue-900/50 text-blue-200 p-3 rounded-md text-sm">
-              Connecting to server...
+              Connecting to server... (Attempt {connectionAttempts}/5)
+            </div>
+          ) : store.socketService.isConnected() ? (
+            <div className="bg-green-900/50 text-green-200 p-3 rounded-md text-sm">
+              Connected to server
+            </div>
+          ) : (
+            <div className="bg-red-900/50 text-red-200 p-3 rounded-md text-sm">
+              Not connected to server
             </div>
           )}
 
@@ -132,7 +153,7 @@ export default function JoinGame() {
 
           <button
             onClick={handleJoinGame}
-            disabled={!gameCode || !playerName || isConnecting}
+            disabled={!gameCode || !playerName || isConnecting || !store.socketService.isConnected()}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isConnecting ? 'Connecting...' : 'Join Game'}

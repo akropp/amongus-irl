@@ -15,7 +15,7 @@ export default function setupSocketHandlers(io) {
         if (!game) {
           console.log('Game not found for code:', gameCode);
           console.log('Available games:', Array.from(gameManager.games.keys()));
-          socket.emit('error', { message: 'Game not found' });
+          socket.emit('join-game-error', { message: 'Game not found' });
           return;
         }
 
@@ -23,11 +23,12 @@ export default function setupSocketHandlers(io) {
         console.log(`Player ${player.name} joined game ${gameCode}. Total players:`, updatedPlayers.length);
         
         socket.join(gameCode);
+        socket.emit('join-game-success', { player, gameCode });
         io.to(gameCode).emit('players-updated', updatedPlayers);
         
       } catch (error) {
         console.error('Error in join-game:', error);
-        socket.emit('error', { message: error.message });
+        socket.emit('join-game-error', { message: error.message });
       }
     });
 
@@ -38,7 +39,7 @@ export default function setupSocketHandlers(io) {
         console.log('Game created successfully:', game);
         
         socket.join(code);
-        socket.emit('game-created', { code });
+        io.emit('game-created', { code, maxPlayers, rooms });
         
       } catch (error) {
         console.error('Error in create-game:', error);
