@@ -25,9 +25,7 @@ const io = new Server(httpServer, {
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['polling', 'websocket'],
-  path: '/socket.io/',
-  maxHttpBufferSize: 1e8
+  transports: ['websocket', 'polling']
 });
 
 // Enable CORS for regular HTTP requests

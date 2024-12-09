@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AdminPanel from './pages/AdminPanel';
 import PlayerGame from './pages/PlayerGame';
 import JoinGame from './pages/JoinGame';
+import Lobby from './pages/Lobby';
 import Navigation from './components/Navigation';
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
         <Routes>
           <Route path="/" element={<JoinGame />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/lobby/:playerId" element={<Lobby />} />
           <Route path="/game/:playerId" element={<PlayerGame />} />
         </Routes>
       </div>

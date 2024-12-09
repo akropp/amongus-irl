@@ -36,7 +36,7 @@ export default function JoinGame() {
 
     store.socketService.onJoinGameSuccess(({ player }) => {
       console.log('Join game success:', player);
-      navigate(`/game/${player.id}`);
+      navigate(`/lobby/${player.id}`);
     });
 
     store.socketService.onJoinGameError((error) => {
@@ -78,7 +78,7 @@ export default function JoinGame() {
     const newPlayer = {
       id: Math.random().toString(36).substring(2),
       name: playerName.trim(),
-      role: 'crewmate',
+      role: 'unassigned',
       isAlive: true,
       tasks: []
     };

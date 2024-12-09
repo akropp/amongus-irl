@@ -1,7 +1,7 @@
 export interface Player {
   id: string;
   name: string;
-  role: 'crewmate' | 'impostor';
+  role: 'crewmate' | 'impostor' | 'unassigned';
   isAlive: boolean;
   tasks: Task[];
 }
@@ -19,4 +19,5 @@ export interface GameState {
   maxPlayers: number;
   phase: 'lobby' | 'playing' | 'meeting' | 'ended';
   rooms: string[];
+  tasks: Task[];
 }

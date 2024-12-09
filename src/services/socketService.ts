@@ -1,7 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import { Player } from '../types/game';
 
-const SOCKET_URL = 'https://amongus-irl.onrender.com';
+// Use environment-aware socket URL
+const SOCKET_URL = import.meta.env.PROD 
+  ? 'https://amongus-irl.onrender.com'
+  : 'http://localhost:3000';
 
 class SocketService {
   private static instance: SocketService;
@@ -36,10 +39,9 @@ class SocketService {
       reconnectionAttempts: this.maxRetries,
       reconnectionDelay: 2000,
       timeout: 20000,
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       forceNew: true,
-      autoConnect: true,
-      path: '/socket.io/'
+      autoConnect: true
     });
 
     this.setupListeners();
@@ -96,10 +98,6 @@ class SocketService {
       if (this.joinGameErrorCallback) {
         this.joinGameErrorCallback(error);
       }
-    });
-
-    this.socket.on('error', (error: { message: string }) => {
-      console.error('Server error:', error);
     });
   }
 
