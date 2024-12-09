@@ -6,7 +6,6 @@ import SocketService from '../services/socketService';
 interface GameStore extends GameState {
   haService: HomeAssistantService | null;
   socketService: SocketService;
-  tasks: Task[];
   setGameCode: (code: string) => void;
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string) => void;
@@ -22,7 +21,7 @@ interface GameStore extends GameState {
   startGame: () => void;
 }
 
-export const useGameStore = create<GameStore>((set, get) => ({
+const useGameStore = create<GameStore>((set, get) => ({
   gameCode: '',
   players: [],
   maxPlayers: 15,
@@ -30,7 +29,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   rooms: [],
   tasks: [],
   haService: null,
-  socketService: SocketService.getInstance(),
+  socketService: new SocketService(),
 
   setGameCode: (code) => {
     const normalizedCode = code.trim().toUpperCase();
@@ -105,13 +104,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const crewmates = players.filter(p => p.role === 'crewmate');
     const impostors = players.filter(p => p.role === 'impostor');
     
-    // Assign real tasks to crewmates
     const updatedCrewmates = crewmates.map(player => ({
       ...player,
       tasks: tasks.map(task => ({ ...task, completed: false }))
     }));
 
-    // Assign fake tasks to impostors
     const updatedImpostors = impostors.map(player => ({
       ...player,
       tasks: tasks
@@ -141,17 +138,4 @@ export const useGameStore = create<GameStore>((set, get) => ({
   }
 }));
 
-// Set up socket listeners
-const socketService = SocketService.getInstance();
-
-socketService.onPlayersUpdated((players) => {
-  useGameStore.setState({ players });
-});
-
-socketService.onGameCreated(({ code }) => {
-  console.log('Game created with code:', code);
-});
-
-socketService.onGameStarted(({ players }) => {
-  useGameStore.setState({ players, phase: 'playing' });
-});
+export { useGameStore };
