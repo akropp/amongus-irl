@@ -24,15 +24,13 @@ const io = new Server(httpServer, {
   },
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000,
-  transports: ['websocket', 'polling']
+  pingInterval: 25000
 });
 
 // Enable CORS for regular HTTP requests
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS']
+  credentials: true
 }));
 
 app.use(express.json());
