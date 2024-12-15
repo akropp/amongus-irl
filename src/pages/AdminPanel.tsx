@@ -1,47 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Users, PlayCircle, Key } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, PlayCircle } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
+import { useAdminStore } from '../store/adminStore';
+import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
+import RoomManager from '../components/admin/RoomManager';
+import TaskCreator from '../components/admin/TaskCreator';
 
 export default function AdminPanel() {
   const [playerCount, setPlayerCount] = useState(4);
-  const [roomInput, setRoomInput] = useState('');
-  const [haToken, setHaToken] = useState('');
   const { 
-    setMaxPlayers, 
-    setRooms, 
-    rooms, 
     gameCode,
-    players, 
+    players,
     setGameCode,
     removePlayer,
-    initializeHomeAssistant,
-    haService 
   } = useGameStore();
 
-  // Clear game code when component unmounts
-  useEffect(() => {
-    return () => setGameCode('');
-  }, [setGameCode]);
+  const {
+    isConnected: isHAConnected,
+    rooms,
+  } = useAdminStore();
 
   const handleCreateGame = () => {
-    setMaxPlayers(playerCount);
-    // Generate a 6-character game code
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    console.log('Generated game code:', newGameCode); // Debug log
+    console.log('Generated game code:', newGameCode);
     setGameCode(newGameCode);
-  };
-
-  const addRoom = () => {
-    if (roomInput.trim()) {
-      setRooms([...rooms, roomInput.trim()]);
-      setRoomInput('');
-    }
-  };
-
-  const handleConnectHA = () => {
-    if (haToken) {
-      initializeHomeAssistant(haToken);
-    }
   };
 
   const handleRemovePlayer = (playerId: string) => {
@@ -55,96 +37,9 @@ export default function AdminPanel() {
           Among Us - Admin Panel
         </h1>
 
-        <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-            <Key className="w-6 h-6" />
-            Home Assistant Connection
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Home Assistant Token
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={haToken}
-                  onChange={(e) => setHaToken(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-700 rounded-md"
-                  placeholder="Enter your Home Assistant token"
-                />
-                <button
-                  onClick={handleConnectHA}
-                  disabled={!haToken}
-                  className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Connect
-                </button>
-              </div>
-            </div>
-            {haService && (
-              <p className="text-green-400 text-sm">✓ Connected to Home Assistant</p>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-            <Settings className="w-6 h-6" />
-            Game Settings
-          </h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Number of Players (4-15)
-              </label>
-              <input
-                type="number"
-                min="4"
-                max="15"
-                value={playerCount}
-                onChange={(e) => setPlayerCount(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-700 rounded-md"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Add Rooms
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={roomInput}
-                  onChange={(e) => setRoomInput(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-700 rounded-md"
-                  placeholder="Enter room name"
-                />
-                <button
-                  onClick={addRoom}
-                  className="px-4 py-2 bg-purple-600 rounded-md hover:bg-purple-700"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium mb-2">Added Rooms:</h3>
-              <div className="flex flex-wrap gap-2">
-                {rooms.map((room, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-purple-600 rounded-full text-sm"
-                  >
-                    {room}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <HomeAssistantSetup />
+        <RoomManager />
+        <TaskCreator />
 
         {gameCode ? (
           <>
@@ -176,10 +71,7 @@ export default function AdminPanel() {
             </div>
 
             <div className="bg-slate-800 p-6 rounded-lg shadow-lg text-center">
-              <h2 className="text-2xl font-semibold mb-4 flex items-center justify-center gap-2">
-                <Users className="w-6 h-6" />
-                Game Code
-              </h2>
+              <h2 className="text-2xl font-semibold mb-4">Game Code</h2>
               <p className="text-4xl font-mono font-bold text-purple-400">
                 {gameCode}
               </p>
@@ -191,7 +83,7 @@ export default function AdminPanel() {
         ) : (
           <button
             onClick={handleCreateGame}
-            disabled={!haService || rooms.length === 0}
+            disabled={!isHAConnected || rooms.length === 0}
             className="w-full py-3 bg-green-600 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <PlayCircle className="w-5 h-5" />
@@ -199,9 +91,9 @@ export default function AdminPanel() {
           </button>
         )}
 
-        {(!haService || rooms.length === 0) && (
+        {(!isHAConnected || rooms.length === 0) && (
           <p className="text-sm text-red-400 text-center">
-            {!haService && "Please connect to Home Assistant first. "}
+            {!isHAConnected && "Please connect to Home Assistant first. "}
             {rooms.length === 0 && "Add at least one room before creating the game."}
           </p>
         )}

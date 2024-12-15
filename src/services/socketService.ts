@@ -1,9 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { Player } from '../types/game';
 
-const SOCKET_URL = import.meta.env.PROD 
-  ? 'https://amongus-irl.onrender.com'
-  : 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -13,6 +11,7 @@ class SocketService {
   private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
 
   constructor() {
+    console.log('Initializing socket service with URL:', SOCKET_URL);
     this.initializeSocket();
   }
 
@@ -22,7 +21,8 @@ class SocketService {
     this.socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
+      timeout: 10000
     });
 
     this.setupListeners();
@@ -33,6 +33,10 @@ class SocketService {
 
     this.socket.on('connect', () => {
       console.log('Socket connected successfully');
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
     });
 
     this.socket.on('players-updated', (players: Player[]) => {
@@ -65,7 +69,9 @@ class SocketService {
   }
 
   public createGame(code: string, maxPlayers: number, rooms: string[]): void {
+    console.log('Creating game:', { code, maxPlayers, rooms });
     if (!this.socket?.connected) {
+      console.log('Socket not connected, attempting to reconnect...');
       this.initializeSocket();
       setTimeout(() => this.createGame(code, maxPlayers, rooms), 1000);
       return;
@@ -74,7 +80,9 @@ class SocketService {
   }
 
   public joinGame(gameCode: string, player: Player): void {
+    console.log('Joining game:', { gameCode, player });
     if (!this.socket?.connected) {
+      console.log('Socket not connected, attempting to reconnect...');
       this.initializeSocket();
       setTimeout(() => this.joinGame(gameCode, player), 1000);
       return;
@@ -83,6 +91,7 @@ class SocketService {
   }
 
   public startGame(gameCode: string, players: Player[]): void {
+    console.log('Starting game:', { gameCode, players });
     if (!this.socket?.connected) return;
     this.socket.emit('start-game', { gameCode, players });
   }
@@ -108,6 +117,7 @@ class SocketService {
   }
 
   public reconnect(): void {
+    console.log('Manually reconnecting socket...');
     this.initializeSocket();
   }
 }

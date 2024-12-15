@@ -7,8 +7,7 @@
     "dev": "concurrently \"node server/index.js\" \"vite\"",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "node server/index.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
@@ -20,6 +19,7 @@
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.1",
     "express": "^4.18.3",
+    "better-sqlite3": "^9.4.3",
     "socket.io": "^4.7.4",
     "socket.io-client": "^4.7.4",
     "cors": "^2.8.5",
@@ -41,8 +41,5 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
