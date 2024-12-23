@@ -19,10 +19,11 @@ class SocketService {
     if (this.socket?.connected) return;
 
     this.socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      timeout: 10000
+      timeout: 10000,
+      withCredentials: true
     });
 
     this.setupListeners();

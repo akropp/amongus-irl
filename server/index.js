@@ -24,7 +24,8 @@ const io = new Server(httpServer, {
   },
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  transports: ['websocket']
 });
 
 // Enable CORS for regular HTTP requests

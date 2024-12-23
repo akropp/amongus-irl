@@ -1,80 +1,69 @@
-import Database from 'better-sqlite3';
-
-const db = new Database('games.db');
-
-// Initialize database tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS games (
-    code TEXT PRIMARY KEY,
-    maxPlayers INTEGER,
-    phase TEXT DEFAULT 'lobby',
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS game_rooms (
-    gameCode TEXT,
-    room TEXT,
-    FOREIGN KEY (gameCode) REFERENCES games(code),
-    PRIMARY KEY (gameCode, room)
-  );
-
-  CREATE TABLE IF NOT EXISTS players (
-    id TEXT PRIMARY KEY,
-    gameCode TEXT,
-    name TEXT,
-    role TEXT DEFAULT 'unassigned',
-    isAlive BOOLEAN DEFAULT 1,
-    FOREIGN KEY (gameCode) REFERENCES games(code)
-  );
-`);
+// In-memory data store
+const store = {
+  games: new Map(),
+  rooms: new Map(),
+  players: new Map()
+};
 
 export const gameQueries = {
-  createGame: db.prepare(`
-    INSERT INTO games (code, maxPlayers) VALUES (?, ?)
-  `),
+  createGame: (code, maxPlayers) => {
+    store.games.set(code, {
+      code,
+      maxPlayers,
+      phase: 'lobby',
+      createdAt: new Date()
+    });
+    return store.games.get(code);
+  },
 
-  addRoom: db.prepare(`
-    INSERT INTO game_rooms (gameCode, room) VALUES (?, ?)
-  `),
+  addRoom: (gameCode, room) => {
+    const rooms = store.rooms.get(gameCode) || [];
+    rooms.push(room);
+    store.rooms.set(gameCode, rooms);
+    return rooms;
+  },
 
-  getGame: db.prepare(`
-    SELECT * FROM games WHERE code = ?
-  `),
+  getGame: (code) => store.games.get(code),
 
-  getRooms: db.prepare(`
-    SELECT room FROM game_rooms WHERE gameCode = ?
-  `),
+  getRooms: (gameCode) => store.rooms.get(gameCode) || [],
 
-  addPlayer: db.prepare(`
-    INSERT INTO players (id, gameCode, name, role) VALUES (?, ?, ?, ?)
-  `),
+  addPlayer: (id, gameCode, name, role) => {
+    const player = { id, gameCode, name, role, isAlive: true };
+    const gamePlayers = store.players.get(gameCode) || [];
+    gamePlayers.push(player);
+    store.players.set(gameCode, gamePlayers);
+    return player;
+  },
 
-  getPlayers: db.prepare(`
-    SELECT * FROM players WHERE gameCode = ?
-  `),
+  getPlayers: (gameCode) => store.players.get(gameCode) || [],
 
-  removePlayer: db.prepare(`
-    DELETE FROM players WHERE id = ?
-  `),
+  removePlayer: (id) => {
+    for (const [gameCode, players] of store.players.entries()) {
+      const filtered = players.filter(p => p.id !== id);
+      if (filtered.length !== players.length) {
+        store.players.set(gameCode, filtered);
+        return filtered;
+      }
+    }
+    return [];
+  },
 
-  updateGamePhase: db.prepare(`
-    UPDATE games SET phase = ? WHERE code = ?
-  `),
+  updateGamePhase: (phase, gameCode) => {
+    const game = store.games.get(gameCode);
+    if (game) {
+      game.phase = phase;
+      store.games.set(gameCode, game);
+    }
+  },
 
-  getGameWithDetails: db.prepare(`
-    SELECT 
-      g.*,
-      json_group_array(DISTINCT r.room) as rooms,
-      json_group_array(json_object(
-        'id', p.id,
-        'name', p.name,
-        'role', p.role,
-        'isAlive', p.isAlive
-      )) as players
-    FROM games g
-    LEFT JOIN game_rooms r ON g.code = r.gameCode
-    LEFT JOIN players p ON g.code = p.gameCode
-    WHERE g.code = ?
-    GROUP BY g.code
-  `)
+  getGameWithDetails: (code) => {
+    const game = store.games.get(code);
+    if (!game) return null;
+
+    return {
+      ...game,
+      rooms: store.rooms.get(code) || [],
+      players: store.players.get(code) || []
+    };
+  }
 };
