@@ -11,33 +11,23 @@ class GameManager extends EventEmitter {
     console.log('GameManager: Creating game with code:', code);
     
     try {
-      const game = gameQueries.createGame(code, maxPlayers);
-      if (game) {
-        // Add rooms to the game
-        rooms.forEach(room => {
-          gameQueries.addRoom(code, room);
-        });
-        
-        this.activeGames.set(code, game);
-        console.log('GameManager: Game created successfully:', game);
-        return game;
-      }
-      throw new Error('Failed to create game');
+      const game = {
+        code,
+        maxPlayers,
+        rooms: [],
+        players: [],
+        phase: 'lobby',
+        createdAt: new Date()
+      };
+      
+      this.activeGames.set(code, game);
+      console.log('GameManager: Game created successfully:', game);
+      return game;
+      
     } catch (error) {
       console.error('GameManager: Error creating game:', error);
       throw error;
     }
-  }
-
-  getGame(code) {
-    let game = this.activeGames.get(code);
-    if (!game) {
-      game = gameQueries.getGameWithDetails(code);
-      if (game) {
-        this.activeGames.set(code, game);
-      }
-    }
-    return game;
   }
 
   addPlayer(gameCode, player) {
@@ -57,12 +47,12 @@ class GameManager extends EventEmitter {
         throw new Error('Game is full');
       }
 
-      const newPlayer = gameQueries.addPlayer(player.id, gameCode, player.name, player.role);
-      if (!newPlayer) throw new Error('Failed to add player');
-
-      game.players.push(newPlayer);
+      game.players.push(player);
       this.activeGames.set(gameCode, game);
+      
+      console.log('GameManager: Player added successfully:', player);
       return game.players;
+      
     } catch (error) {
       console.error('GameManager: Error adding player:', error);
       throw error;
@@ -74,10 +64,9 @@ class GameManager extends EventEmitter {
     try {
       const game = this.getGame(gameCode);
       if (game) {
-        const updatedPlayers = gameQueries.removePlayer(playerId);
-        game.players = updatedPlayers;
+        game.players = game.players.filter(p => p.id !== playerId);
         this.activeGames.set(gameCode, game);
-        return updatedPlayers;
+        return game.players;
       }
       return [];
     } catch (error) {
@@ -86,10 +75,13 @@ class GameManager extends EventEmitter {
     }
   }
 
+  getGame(code) {
+    return this.activeGames.get(code) || null;
+  }
+
   updateGamePhase(gameCode, phase) {
     const game = this.getGame(gameCode);
     if (game) {
-      gameQueries.updateGamePhase(phase, gameCode);
       game.phase = phase;
       this.activeGames.set(gameCode, game);
     }
