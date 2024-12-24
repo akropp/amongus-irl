@@ -54,10 +54,56 @@ export default class SocketService {
     });
   }
 
-  // ... rest of the service implementation remains the same ...
+  public isConnected(): boolean {
+    return this.socket.connected;
+  }
+
+  public joinGame(gameCode: string, player: Player) {
+    this.socket.emit('join-game', { gameCode, player });
+  }
+
+  public createGame(code: string, maxPlayers: number, rooms: string[]) {
+    this.socket.emit('create-game', { code, maxPlayers, rooms });
+  }
+
+  public removePlayer(gameCode: string, playerId: string) {
+    this.socket.emit('remove-player', { gameCode, playerId });
+  }
+
+  public onJoinGameSuccess(callback: (data: { player: Player; gameCode: string; players: Player[] }) => void): void {
+    this.joinGameSuccessCallback = callback;
+  }
+
+  public onJoinGameError(callback: (error: { message: string }) => void): void {
+    this.joinGameErrorCallback = callback;
+  }
+
+  public onPlayersUpdated(callback: (players: Player[]) => void): void {
+    this.playersUpdateCallback = callback;
+  }
+
+  public onDisconnect(callback: () => void): void {
+    this.disconnectCallback = callback;
+  }
+
+  public offJoinGameSuccess(): void {
+    this.joinGameSuccessCallback = null;
+  }
+
+  public offJoinGameError(): void {
+    this.joinGameErrorCallback = null;
+  }
+
+  public offDisconnect(): void {
+    this.disconnectCallback = null;
+  }
 
   public onRemoved(callback: (data: { playerId: string }) => void): void {
     this.removedCallback = callback;
+  }
+
+  public offRemoved(): void {
+    this.removedCallback = null;
   }
 
   public onGameStarted(callback: () => void): void {
