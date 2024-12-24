@@ -1,51 +1,95 @@
 import { io, Socket } from 'socket.io-client';
 import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
 import { Player } from '../types/game';
+import { setupSocketReconnection } from '../utils/socketReconnection';
+import { getPlayerSession } from '../utils/playerSession';
 
 export default class SocketService {
   public socket: Socket;
-  private reconnectAttempts: number = 0;
-  private MAX_RECONNECT_ATTEMPTS: number = 5;
+  private reconnection: ReturnType<typeof setupSocketReconnection>;
 
   constructor() {
+    const session = getPlayerSession();
+    
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
-      auth: {
-        playerId: localStorage.getItem('currentPlayerId'),
-        gameCode: localStorage.getItem('currentGameCode')
-      }
+      auth: session.isValid ? {
+        playerId: session.playerId,
+        gameCode: session.gameCode
+      } : undefined
     });
 
-    this.setupReconnection();
+    this.reconnection = setupSocketReconnection(this.socket);
   }
 
-  private setupReconnection() {
-    this.socket.on('connect', () => {
-      console.log('Socket connected');
-      this.reconnectAttempts = 0;
-      
-      const playerId = localStorage.getItem('currentPlayerId');
-      const gameCode = localStorage.getItem('currentGameCode');
-      
-      if (playerId && gameCode) {
-        this.socket.emit('register-player', { gameCode, playerId });
-      }
-    });
+  public isConnected(): boolean {
+    return this.socket.connected;
+  }
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        this.socket.connect();
-      }
-    });
+  public createGame(code: string, maxPlayers: number, rooms: string[]) {
+    if (this.socket.connected) {
+      this.socket.emit('create-game', { code, maxPlayers, rooms });
+    }
+  }
 
-    this.socket.on('reconnect_attempt', (attempt) => {
-      this.reconnectAttempts = attempt;
-      if (attempt > this.MAX_RECONNECT_ATTEMPTS) {
-        this.socket.disconnect();
+  public endGame(code: string) {
+    if (this.socket.connected) {
+      this.socket.emit('end-game', { code });
+    }
+  }
+
+  public joinGame(gameCode: string, player: Player) {
+    if (this.socket.connected) {
+      this.socket.emit('join-game', { gameCode, player });
+    }
+  }
+
+  public removePlayer(gameCode: string, playerId: string) {
+    if (this.socket.connected) {
+      this.socket.emit('remove-player', { gameCode, playerId });
+    }
+  }
+
+  public verifyGame(code: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (this.socket.connected) {
+        this.socket.emit('verify-game', { code }, (response: { exists: boolean }) => {
+          resolve(response.exists);
+        });
+      } else {
+        resolve(false);
       }
     });
   }
 
-  // ... rest of the existing methods ...
+  // Event handlers
+  public onPlayersUpdated(callback: (players: Player[]) => void) {
+    this.socket.on('players-updated', callback);
+  }
+
+  public offPlayersUpdated() {
+    this.socket.off('players-updated');
+  }
+
+  public disconnect() {
+    this.socket.disconnect();
+  }
+
+  public connect() {
+    if (!this.socket.connected) {
+      this.socket.connect();
+    }
+  }
+
+  public getReconnectionAttempts(): number {
+    return this.reconnection.getReconnectAttempts();
+  }
+
+  public getMaxReconnectionAttempts(): number {
+    return this.reconnection.maxAttempts;
+  }
+
+  public getReconnectionTimeout(): number {
+    return this.reconnection.timeout;
+  }
 }

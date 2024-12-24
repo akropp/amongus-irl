@@ -15,13 +15,41 @@ export default function JoinGame() {
   const isConnected = useSocket();
 
   useEffect(() => {
-    // Clear any existing game state
     reset();
     localStorage.removeItem('currentGameCode');
     localStorage.removeItem('currentPlayerId');
     localStorage.removeItem('currentPlayer');
     localStorage.removeItem('gamePhase');
+    localStorage.removeItem('playerRemoved');
   }, [reset]);
+
+  useEffect(() => {
+    const handleJoinSuccess = (data: { player: any; gameCode: string; players: any[] }) => {
+      updateGameCode(data.gameCode);
+      data.players.forEach(p => addPlayer(p));
+      
+      localStorage.setItem('currentGameCode', data.gameCode);
+      localStorage.setItem('currentPlayerId', data.player.id);
+      localStorage.setItem('currentPlayer', JSON.stringify(data.player));
+      localStorage.setItem('gamePhase', 'lobby');
+      
+      setIsLoading(false);
+      navigate(`/lobby/${data.player.id}`);
+    };
+
+    const handleJoinError = (error: { message: string }) => {
+      setError(error.message);
+      setIsLoading(false);
+    };
+
+    socketService.socket.on('join-game-success', handleJoinSuccess);
+    socketService.socket.on('join-game-error', handleJoinError);
+
+    return () => {
+      socketService.socket.off('join-game-success', handleJoinSuccess);
+      socketService.socket.off('join-game-error', handleJoinError);
+    };
+  }, [socketService, navigate, updateGameCode, addPlayer]);
 
   const handleJoinGame = () => {
     setError('');
@@ -57,34 +85,6 @@ export default function JoinGame() {
     
     socketService.joinGame(normalizedInputCode, newPlayer);
   };
-
-  useEffect(() => {
-    const handleJoinSuccess = ({ player, gameCode, players }) => {
-      updateGameCode(gameCode);
-      players.forEach(p => addPlayer(p));
-      
-      localStorage.setItem('currentGameCode', gameCode);
-      localStorage.setItem('currentPlayerId', player.id);
-      localStorage.setItem('currentPlayer', JSON.stringify(player));
-      localStorage.setItem('gamePhase', 'lobby');
-      
-      setIsLoading(false);
-      navigate(`/lobby/${player.id}`);
-    };
-
-    const handleJoinError = (error) => {
-      setError(error.message);
-      setIsLoading(false);
-    };
-
-    socketService.onJoinGameSuccess(handleJoinSuccess);
-    socketService.onJoinGameError(handleJoinError);
-
-    return () => {
-      socketService.offJoinGameSuccess();
-      socketService.offJoinGameError();
-    };
-  }, [socketService, navigate, updateGameCode, addPlayer]);
 
   if (isLoading) {
     return <LoadingSpinner />;
