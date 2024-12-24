@@ -1,26 +1,25 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { sessionManager } from '../utils/sessionManager';
+import { Player } from '../types/game';
 
 export function useSocketEvents() {
   const { socketService, updatePlayers, setGameCode, reset } = useGameStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handlePlayersUpdate = (updatedPlayers) => {
+    const handlePlayersUpdate = (updatedPlayers: Player[]) => {
       console.log('Players updated:', updatedPlayers);
-      const session = sessionManager.getSession();
+      const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || 'null');
       
-      if (!session.playerId) return;
+      if (!currentPlayer?.id) return;
 
-      const stillInGame = updatedPlayers.some(p => p.id === session.playerId);
-      
+      const stillInGame = updatedPlayers.some(p => p.id === currentPlayer.id);
       if (stillInGame) {
         updatePlayers(updatedPlayers);
-      } else if (!sessionManager.wasPlayerRemoved()) {
-        console.log('Player no longer in game, redirecting to join page');
-        sessionManager.clearSession();
+      } else if (!localStorage.getItem('playerRemoved')) {
+        console.log('Player no longer in game, redirecting');
+        localStorage.clear();
         reset();
         navigate('/', { replace: true });
       }
@@ -28,27 +27,17 @@ export function useSocketEvents() {
 
     const handleGameEnded = () => {
       console.log('Game ended');
-      sessionManager.clearSession();
+      localStorage.clear();
       reset();
       navigate('/', { replace: true });
     };
 
-    const handleReconnectionSuccess = () => {
-      console.log('Reconnection successful');
-      const session = sessionManager.getSession();
-      if (session.gameCode && session.player) {
-        setGameCode(session.gameCode);
-      }
-    };
-
     socketService.socket.on('players-updated', handlePlayersUpdate);
     socketService.socket.on('game-ended', handleGameEnded);
-    socketService.socket.on('reconnection-successful', handleReconnectionSuccess);
 
     return () => {
       socketService.socket.off('players-updated', handlePlayersUpdate);
       socketService.socket.off('game-ended', handleGameEnded);
-      socketService.socket.off('reconnection-successful', handleReconnectionSuccess);
     };
-  }, [socketService, updatePlayers, setGameCode, reset, navigate]);
+  }, [socketService, updatePlayers, reset, navigate]);
 }
