@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { PlayCircle } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
@@ -9,6 +9,7 @@ import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
 import SabotageConfig from '../components/admin/SabotageConfig';
 import PlayerManager from '../components/admin/PlayerManager';
 import { useSocketInit } from '../hooks/useSocketInit';
+import { useGameVerification } from '../hooks/useGameVerification';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 
 export default function AdminPanel() {
@@ -18,65 +19,18 @@ export default function AdminPanel() {
     gameCode,
     setGameCode,
     socketService,
-    updatePlayers,
   } = useGameStore();
 
   const { rooms } = useAdminStore();
   const isSocketInitialized = useSocketInit();
+  
+  useGameVerification();
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        if (!isSocketInitialized) return;
-
-        // Restore game code from storage if exists
-        const storedGameCode = localStorage.getItem('adminGameCode');
-        if (storedGameCode) {
-          // Verify the game exists
-          socketService.socket.emit('verify-game', { code: storedGameCode }, (response) => {
-            if (response.exists) {
-              setGameCode(storedGameCode);
-            } else {
-              setGameCode(null);
-              localStorage.removeItem('adminGameCode');
-            }
-          });
-        }
-
-        const handleGameCreated = ({ code }) => {
-          setGameCode(code);
-        };
-
-        const handlePlayersUpdate = (updatedPlayers) => {
-          console.log('Players updated:', updatedPlayers);
-          updatePlayers(updatedPlayers);
-        };
-
-        const handleGameNotFound = () => {
-          setGameCode(null);
-          localStorage.removeItem('adminGameCode');
-        };
-
-        socketService.socket.on('players-updated', handlePlayersUpdate);
-        socketService.socket.on('game-created', handleGameCreated);
-        socketService.socket.on('game-not-found', handleGameNotFound);
-        
-        setIsInitializing(false);
-
-        return () => {
-          socketService.socket.off('players-updated', handlePlayersUpdate);
-          socketService.socket.off('game-created', handleGameCreated);
-          socketService.socket.off('game-not-found', handleGameNotFound);
-        };
-      } catch (error) {
-        console.error('Failed to initialize admin panel:', error);
-        setError('Failed to initialize admin panel');
-        setIsInitializing(false);
-      }
-    };
-
-    init();
-  }, [socketService, setGameCode, updatePlayers, isSocketInitialized]);
+  React.useEffect(() => {
+    if (isSocketInitialized) {
+      setIsInitializing(false);
+    }
+  }, [isSocketInitialized]);
 
   if (isInitializing) {
     return <LoadingSpinner />;

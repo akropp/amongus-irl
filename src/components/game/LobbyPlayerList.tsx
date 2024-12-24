@@ -1,35 +1,20 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Users } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
-import { Player } from '../../types/game';
+import { useGameEvents } from '../../hooks/useGameEvents';
 
 interface LobbyPlayerListProps {
   currentPlayerId?: string;
 }
 
 export function LobbyPlayerList({ currentPlayerId }: LobbyPlayerListProps) {
-  const { players, socketService, updatePlayers } = useGameStore();
+  const { players } = useGameStore();
 
-  useEffect(() => {
-    const handlePlayersUpdate = (updatedPlayers: Player[]) => {
-      updatePlayers(updatedPlayers);
-    };
-
-    const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
-      if (playerId === currentPlayerId) {
-        // Only redirect if the current player was removed
-        window.location.href = '/';
-      }
-    };
-
-    socketService.socket.on('players-updated', handlePlayersUpdate);
-    socketService.socket.on('player-removed', handlePlayerRemoved);
-
-    return () => {
-      socketService.socket.off('players-updated', handlePlayersUpdate);
-      socketService.socket.off('player-removed', handlePlayerRemoved);
-    };
-  }, [socketService, updatePlayers, currentPlayerId]);
+  useGameEvents((playerId) => {
+    if (playerId === currentPlayerId) {
+      window.location.href = '/';
+    }
+  });
 
   return (
     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">

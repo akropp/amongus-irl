@@ -1,22 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Users, UserX } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { Player } from '../../types/game';
+import { useGameEvents } from '../../hooks/useGameEvents';
 
 export default function PlayerManager() {
-  const { players, gameCode, socketService, updatePlayers } = useGameStore();
-
-  useEffect(() => {
-    const handlePlayersUpdate = (updatedPlayers: Player[]) => {
-      updatePlayers(updatedPlayers);
-    };
-
-    socketService.socket.on('players-updated', handlePlayersUpdate);
-
-    return () => {
-      socketService.socket.off('players-updated', handlePlayersUpdate);
-    };
-  }, [socketService, updatePlayers]);
+  const { players, gameCode, socketService } = useGameStore();
+  
+  useGameEvents();
 
   const handleRemovePlayer = (player: Player) => {
     if (!gameCode) return;
