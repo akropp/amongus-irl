@@ -13,34 +13,31 @@ export default class SocketService {
       auth: { clientId }
     });
 
-    this.setupReconnection();
-  }
-
-  private setupReconnection() {
+    // Log connection events for debugging
     this.socket.on('connect', () => {
-      console.log('Socket connected');
-      const session = sessionManager.getSession();
-      
-      if (session.isAdmin && session.gameCode) {
-        this.socket.emit('verify-game', { code: session.gameCode });
-      } else if (session.isValidSession()) {
-        this.socket.emit('register-player', {
-          gameCode: session.gameCode,
-          playerId: session.playerId,
-          player: session.player
-        });
-      }
+      console.log('Socket connected successfully');
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        this.socket.connect();
-      }
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
     });
   }
 
   public isConnected(): boolean {
     return this.socket.connected;
+  }
+
+  public getClientId(): string | null {
+    return sessionManager.getClientId();
+  }
+
+  public connect(): void {
+    if (!this.socket.connected) {
+      this.socket.connect();
+    }
+  }
+
+  public disconnect(): void {
+    this.socket.disconnect();
   }
 }

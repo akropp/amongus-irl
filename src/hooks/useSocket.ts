@@ -16,11 +16,15 @@ export function useSocket() {
       setIsConnected(false);
     };
 
+    // Connect socket if not already connected
+    if (!socketService.socket.connected) {
+      socketService.socket.connect();
+    } else {
+      setIsConnected(true);
+    }
+
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('disconnect', handleDisconnect);
-
-    // Set initial connection state
-    setIsConnected(socketService.socket.connected);
 
     return () => {
       socketService.socket.off('connect', handleConnect);

@@ -15,6 +15,5 @@ export const SOCKET_OPTIONS = {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
   timeout: 20000,
-  withCredentials: true,
   autoConnect: true
 };
