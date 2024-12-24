@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
+import { sessionManager } from '../utils/sessionManager';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
 import RoomManager from '../components/admin/RoomManager';
 import TaskCreator from '../components/admin/TaskCreator';
@@ -33,20 +34,24 @@ export default function AdminPanel() {
 
     const handleGameCreated = (data: { code: string; maxPlayers: number; rooms: string[] }) => {
       console.log('Game created:', data);
+      sessionManager.saveGameSession(data.code, null, true);
       setGameCode(data.code);
-      localStorage.setItem('adminGameCode', data.code);
+    };
+
+    const handleGameEnded = () => {
+      console.log('Game ended');
+      sessionManager.clearSession();
+      setGameCode(null);
     };
 
     socketService.socket.on('game-created', handleGameCreated);
+    socketService.socket.on('game-ended', handleGameEnded);
 
     return () => {
       socketService.socket.off('game-created', handleGameCreated);
+      socketService.socket.off('game-ended', handleGameEnded);
     };
   }, [isSocketInitialized, socketService, setGameCode]);
-
-  if (isInitializing) {
-    return <LoadingSpinner />;
-  }
 
   const handleCreateGame = () => {
     if (!isSocketInitialized) {
