@@ -1,28 +1,35 @@
 import { io, Socket } from 'socket.io-client';
 import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
-import { Player } from '../types/game';
 
 export default class SocketService {
   public socket: Socket;
+  private clientId: string;
 
   constructor() {
-    this.socket = io(SERVER_URL, SOCKET_OPTIONS);
-    this.setupReconnection();
+    // Get or generate client ID
+    this.clientId = localStorage.getItem('socketClientId') || this.generateClientId();
+    localStorage.setItem('socketClientId', this.clientId);
+
+    // Initialize socket with client ID
+    this.socket = io(SERVER_URL, {
+      ...SOCKET_OPTIONS,
+      auth: { clientId: this.clientId }
+    });
+    
+    this.setupLogging();
   }
 
-  private setupReconnection() {
+  private generateClientId(): string {
+    return 'client_' + Math.random().toString(36).substring(2, 15);
+  }
+
+  private setupLogging() {
     this.socket.on('connect', () => {
-      console.log('Socket connected');
-      const gameCode = localStorage.getItem('currentGameCode');
-      const playerId = localStorage.getItem('currentPlayerId');
-      
-      if (gameCode && playerId) {
-        this.socket.emit('register-player', { gameCode, playerId });
-      }
+      console.log(`Socket connected - Client ID: ${this.clientId}, Socket ID: ${this.socket.id}`);
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+    this.socket.on('disconnect', (reason) => {
+      console.log(`Socket disconnected - Client ID: ${this.clientId}, Reason: ${reason}`);
     });
   }
 
@@ -30,30 +37,7 @@ export default class SocketService {
     return this.socket.connected;
   }
 
-  public joinGame(gameCode: string, player: Player) {
-    if (this.socket.connected) {
-      console.log('Emitting join-game:', { gameCode, player });
-      this.socket.emit('join-game', { gameCode, player });
-    }
-  }
-
-  public removePlayer(gameCode: string, playerId: string) {
-    if (this.socket.connected) {
-      console.log('Emitting remove-player:', { gameCode, playerId });
-      this.socket.emit('remove-player', { gameCode, playerId });
-    }
-  }
-
-  public verifyGame(code: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      if (!this.socket.connected) {
-        resolve(false);
-        return;
-      }
-      
-      this.socket.emit('verify-game', { code }, (response: { exists: boolean }) => {
-        resolve(response.exists);
-      });
-    });
+  public getClientId(): string {
+    return this.clientId;
   }
 }
