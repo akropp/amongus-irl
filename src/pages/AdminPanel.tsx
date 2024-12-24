@@ -13,7 +13,8 @@ export default function AdminPanel() {
     players,
     setGameCode,
     removePlayer,
-    reset
+    reset,
+    socketService
   } = useGameStore();
 
   const {
@@ -25,6 +26,13 @@ export default function AdminPanel() {
   useEffect(() => {
     reset();
   }, [reset]);
+
+  // Listen for player updates
+  useEffect(() => {
+    socketService.onPlayersUpdated((updatedPlayers) => {
+      useGameStore.getState().updatePlayers(updatedPlayers);
+    });
+  }, [socketService]);
 
   const handleCreateGame = () => {
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();

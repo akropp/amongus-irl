@@ -21,6 +21,7 @@ interface GameStore extends GameState {
   initializeHomeAssistant: (token: string) => void;
   startGame: () => void;
   reset: () => void;
+  updatePlayers: (players: Player[]) => void;
 }
 
 const initialState = {
@@ -54,7 +55,6 @@ const useGameStore = create<GameStore>()(
       },
       
       addPlayer: (player) => {
-        console.log('Adding player:', player);
         set(state => ({ 
           players: [...state.players.filter(p => p.id !== player.id), player]
         }));
@@ -64,6 +64,8 @@ const useGameStore = create<GameStore>()(
         set(state => ({
           players: state.players.filter(p => p.id !== playerId)
         })),
+
+      updatePlayers: (players) => set({ players }),
         
       setMaxPlayers: (count) => set({ maxPlayers: count }),
       
