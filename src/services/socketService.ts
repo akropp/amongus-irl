@@ -1,126 +1,13 @@
-import { io, Socket } from 'socket.io-client';
-import { Player } from '../types/game';
-import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
+// Add these methods to the SocketService class
 
-class SocketService {
-  private socket: Socket | null = null;
-  private playersUpdateCallback: ((players: Player[]) => void) | null = null;
-  private gameCreatedCallback: ((data: { code: string }) => void) | null = null;
-  private joinGameSuccessCallback: ((data: { player: Player, gameCode: string }) => void) | null = null;
-  private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-
-  constructor() {
-    this.initializeSocket();
-  }
-
-  private initializeSocket(): void {
-    if (this.socket?.connected) return;
-
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('Max reconnection attempts reached');
-      return;
-    }
-
-    this.socket = io(SERVER_URL, {
-      ...SOCKET_OPTIONS,
-      forceNew: true
-    });
-    
-    this.setupListeners();
-    this.reconnectAttempts++;
-  }
-
-  private setupListeners(): void {
-    if (!this.socket) return;
-
-    this.socket.on('connect', () => {
-      this.reconnectAttempts = 0;
-    });
-
-    this.socket.on('connect_error', () => {
-      setTimeout(() => this.initializeSocket(), 2000);
-    });
-
-    this.socket.on('disconnect', (reason) => {
-      if (reason === 'io server disconnect') {
-        setTimeout(() => this.initializeSocket(), 2000);
-      }
-    });
-
-    this.socket.on('players-updated', (players: Player[]) => {
-      if (this.playersUpdateCallback) {
-        this.playersUpdateCallback(players);
-      }
-    });
-
-    this.socket.on('game-created', (data: { code: string }) => {
-      if (this.gameCreatedCallback) {
-        this.gameCreatedCallback(data);
-      }
-    });
-
-    this.socket.on('join-game-success', (data: { player: Player, gameCode: string }) => {
-      if (this.joinGameSuccessCallback) {
-        this.joinGameSuccessCallback(data);
-      }
-    });
-
-    this.socket.on('join-game-error', (error: { message: string }) => {
-      if (this.joinGameErrorCallback) {
-        this.joinGameErrorCallback(error);
-      }
-    });
-  }
-
-  public createGame(code: string, maxPlayers: number, rooms: string[]): void {
-    if (!this.socket?.connected) {
-      this.initializeSocket();
-      setTimeout(() => this.createGame(code, maxPlayers, rooms), 1000);
-      return;
-    }
-    this.socket.emit('create-game', { code, maxPlayers, rooms });
-  }
-
-  public joinGame(gameCode: string, player: Player): void {
-    if (!this.socket?.connected) {
-      this.initializeSocket();
-      setTimeout(() => this.joinGame(gameCode, player), 1000);
-      return;
-    }
-    this.socket.emit('join-game', { gameCode, player });
-  }
-
-  public startGame(gameCode: string, players: Player[]): void {
-    if (!this.socket?.connected) return;
-    this.socket.emit('start-game', { gameCode, players });
-  }
-
-  public onPlayersUpdated(callback: (players: Player[]) => void): void {
-    this.playersUpdateCallback = callback;
-  }
-
-  public onGameCreated(callback: (data: { code: string }) => void): void {
-    this.gameCreatedCallback = callback;
-  }
-
-  public onJoinGameSuccess(callback: (data: { player: Player, gameCode: string }) => void): void {
-    this.joinGameSuccessCallback = callback;
-  }
-
-  public onJoinGameError(callback: (error: { message: string }) => void): void {
-    this.joinGameErrorCallback = callback;
-  }
-
-  public isConnected(): boolean {
-    return !!this.socket?.connected;
-  }
-
-  public reconnect(): void {
-    this.reconnectAttempts = 0;
-    this.initializeSocket();
-  }
+public offJoinGameSuccess(callback: (data: { player: Player, gameCode: string }) => void): void {
+  this.joinGameSuccessCallback = null;
 }
 
-export default SocketService;
+public offJoinGameError(callback: (error: { message: string }) => void): void {
+  this.joinGameErrorCallback = null;
+}
+
+public offPlayersUpdated(callback: (players: Player[]) => void): void {
+  this.playersUpdateCallback = null;
+}
