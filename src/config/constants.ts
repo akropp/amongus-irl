@@ -1,4 +1,5 @@
-export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+// For production, use the Render/Railway/etc URL where your server is deployed
+export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'https://real-life-among-us-server.onrender.com';
 
 export const SOCKET_OPTIONS = {
   transports: ['websocket'],

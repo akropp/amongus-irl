@@ -18,7 +18,8 @@ const httpServer = createServer(app);
 // Allow both development and production origins
 const allowedOrigins = [
   'https://radiant-druid-cda853.netlify.app',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  'http://localhost:3000'
 ];
 
 const io = new Server(httpServer, {
@@ -29,8 +30,7 @@ const io = new Server(httpServer, {
   },
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000,
-  transports: ['websocket']
+  pingInterval: 25000
 });
 
 // Enable CORS for regular HTTP requests
@@ -41,32 +41,9 @@ app.use(cors({
 
 app.use(express.json());
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.resolve(__dirname, '../dist');
-  app.use(express.static(distPath));
-  
-  // Handle client-side routing
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
-});
-
-// Debug endpoint to check current games
-app.get('/debug/games', (req, res) => {
-  const games = Array.from(io.sockets.adapter.rooms.entries())
-    .filter(([key]) => !key.startsWith('/'));
-  
-  res.json({
-    connections: io.engine.clientsCount,
-    rooms: games,
-    uptime: process.uptime()
-  });
 });
 
 setupSocketHandlers(io);
@@ -75,13 +52,4 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Allowed origins:', allowedOrigins);
-});
-
-// Handle process termination gracefully
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Closing HTTP server...');
-  httpServer.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
 });
