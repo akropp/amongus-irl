@@ -4,8 +4,8 @@ class GameManager extends EventEmitter {
   constructor() {
     super();
     this.activeGames = new Map();
-    this.disconnectedPlayers = new Map(); // Store disconnected players with timestamps
-    this.RECONNECT_TIMEOUT = 30000; // 30 seconds grace period
+    this.disconnectedPlayers = new Map();
+    this.RECONNECT_TIMEOUT = 30000;
   }
 
   createGame(code, maxPlayers, rooms) {
@@ -30,6 +30,45 @@ class GameManager extends EventEmitter {
     }
   }
 
+  getGame(code) {
+    return this.activeGames.get(code);
+  }
+
+  addPlayer(gameCode, player) {
+    const game = this.getGame(gameCode);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (game.players.some(p => p.name === player.name)) {
+      throw new Error('Player name already taken');
+    }
+
+    game.players.push(player);
+    this.activeGames.set(gameCode, game);
+    return game.players;
+  }
+
+  removePlayer(gameCode, playerId) {
+    const game = this.getGame(gameCode);
+    if (game) {
+      game.players = game.players.filter(p => p.id !== playerId);
+      
+      if (game.players.length === 0) {
+        this.activeGames.delete(gameCode);
+        return [];
+      }
+      
+      this.activeGames.set(gameCode, game);
+      return game.players;
+    }
+    return [];
+  }
+
+  endGame(code) {
+    return this.activeGames.delete(code);
+  }
+
   handleDisconnect(gameCode, playerId, socketId) {
     const game = this.getGame(gameCode);
     if (!game) return;
@@ -37,7 +76,6 @@ class GameManager extends EventEmitter {
     const player = game.players.find(p => p.id === playerId);
     if (!player) return;
 
-    // Store the disconnected player with timestamp and socket ID
     this.disconnectedPlayers.set(playerId, {
       player,
       gameCode,
@@ -45,7 +83,6 @@ class GameManager extends EventEmitter {
       timestamp: Date.now()
     });
 
-    // Set up timeout to remove player if they don't reconnect
     setTimeout(() => {
       const disconnectedInfo = this.disconnectedPlayers.get(playerId);
       if (disconnectedInfo) {
@@ -65,8 +102,6 @@ class GameManager extends EventEmitter {
     }
     return false;
   }
-
-  // ... rest of the existing methods ...
 }
 
 export default new GameManager();
