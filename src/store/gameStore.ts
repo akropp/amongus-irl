@@ -24,6 +24,7 @@ const initialState: Omit<GameStore, 'socketService' | 'setGameCode' | 'addPlayer
   sabotages: []
 };
 
+// Create a single socket service instance
 const socketService = new SocketService();
 
 export const useGameStore = create<GameStore>()(
@@ -38,7 +39,9 @@ export const useGameStore = create<GameStore>()(
       
       addPlayer: (player) => {
         set(state => ({
-          players: [...state.players.filter(p => p.id !== player.id), player]
+          players: state.players.some(p => p.id === player.id)
+            ? state.players.map(p => p.id === player.id ? player : p)
+            : [...state.players, player]
         }));
       },
       
@@ -55,7 +58,7 @@ export const useGameStore = create<GameStore>()(
       setPhase: (phase) => set({ phase }),
       
       reset: () => {
-        set({ ...initialState, socketService });
+        set(initialState);
       }
     }),
     {

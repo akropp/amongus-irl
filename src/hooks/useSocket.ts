@@ -16,25 +16,26 @@ export function useSocket() {
       setIsConnected(false);
     };
 
-    // Force connect if not already connected
-    if (!socketService.socket.connected) {
-      console.log('Initiating socket connection...');
-      socketService.socket.connect();
+    const handleError = (error: Error) => {
+      console.error('Socket error:', error);
+      setIsConnected(false);
+    };
+
+    // Connect socket if not already connected
+    if (!socketService.isConnected()) {
+      socketService.connect();
     } else {
       setIsConnected(true);
     }
 
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('disconnect', handleDisconnect);
-    socketService.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      setIsConnected(false);
-    });
+    socketService.socket.on('connect_error', handleError);
 
     return () => {
       socketService.socket.off('connect', handleConnect);
       socketService.socket.off('disconnect', handleDisconnect);
-      socketService.socket.off('connect_error');
+      socketService.socket.off('connect_error', handleError);
     };
   }, [socketService]);
 
