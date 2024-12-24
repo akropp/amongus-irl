@@ -4,43 +4,43 @@ import { sessionManager } from '../utils/sessionManager';
 
 export default class SocketService {
   public socket: Socket;
-  private clientId: string;
 
   constructor() {
-    // Get or generate client ID using sessionStorage
-    this.clientId = sessionStorage.getItem('socketClientId') || this.generateClientId();
-    sessionStorage.setItem('socketClientId', this.clientId);
-
-    // Initialize socket with client ID
+    const clientId = sessionManager.getClientId();
+    
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
-      auth: { clientId: this.clientId }
+      auth: { clientId }
     });
-    
-    this.setupSessionHandling();
+
+    this.setupReconnection();
   }
 
-  private generateClientId(): string {
-    return 'client_' + Math.random().toString(36).substring(2, 15);
-  }
+  private setupReconnection() {
+    this.socket.on('connect', () => {
+      console.log('Socket connected');
+      const session = sessionManager.getSession();
+      
+      if (session.isAdmin && session.gameCode) {
+        this.socket.emit('verify-game', { code: session.gameCode });
+      } else if (session.isValidSession()) {
+        this.socket.emit('register-player', {
+          gameCode: session.gameCode,
+          playerId: session.playerId,
+          player: session.player
+        });
+      }
+    });
 
-  private setupSessionHandling() {
-    this.socket.on('session-restored', (session) => {
-      console.log('Session restored:', session);
-      if (session.type === 'admin') {
-        sessionManager.saveGameSession(session.gameCode, null, true);
-      } else if (session.type === 'player') {
-        sessionManager.saveGameSession(session.gameCode, session.player);
-        window.location.href = session.page;
+    this.socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        this.socket.connect();
       }
     });
   }
 
   public isConnected(): boolean {
     return this.socket.connected;
-  }
-
-  public getClientId(): string {
-    return this.clientId;
   }
 }

@@ -1,6 +1,6 @@
 import { Player } from '../types/game';
 
-export interface GameSession {
+interface GameSession {
   gameCode: string | null;
   playerId: string | null;
   player: Player | null;
@@ -9,43 +9,66 @@ export interface GameSession {
 }
 
 class SessionManager {
-  private static STORAGE_KEYS = {
-    GAME_CODE: 'currentGameCode',
-    PLAYER_ID: 'currentPlayerId',
-    PLAYER: 'currentPlayer',
-    PHASE: 'gamePhase',
-    ADMIN_GAME: 'adminGameCode',
-    PLAYER_REMOVED: 'playerRemoved'
+  private readonly STORAGE_PREFIX = 'amongus_';
+  private readonly KEYS = {
+    CLIENT_ID: `${this.STORAGE_PREFIX}clientId`,
+    GAME_CODE: `${this.STORAGE_PREFIX}gameCode`,
+    PLAYER_ID: `${this.STORAGE_PREFIX}playerId`,
+    PLAYER: `${this.STORAGE_PREFIX}player`,
+    PHASE: `${this.STORAGE_PREFIX}phase`,
+    IS_ADMIN: `${this.STORAGE_PREFIX}isAdmin`,
+    REMOVED: `${this.STORAGE_PREFIX}removed`
   };
 
-  saveGameSession(gameCode: string, player: Player, isAdmin = false) {
-    localStorage.setItem(this.STORAGE_KEYS.GAME_CODE, gameCode);
-    localStorage.setItem(this.STORAGE_KEYS.PLAYER_ID, player.id);
-    localStorage.setItem(this.STORAGE_KEYS.PLAYER, JSON.stringify(player));
-    localStorage.setItem(this.STORAGE_KEYS.PHASE, 'lobby');
-    
-    if (isAdmin) {
-      localStorage.setItem(this.STORAGE_KEYS.ADMIN_GAME, gameCode);
+  constructor() {
+    // Ensure client ID exists
+    if (!this.getClientId()) {
+      this.setClientId(this.generateClientId());
     }
+  }
+
+  private generateClientId(): string {
+    return 'client_' + Math.random().toString(36).substring(2, 15);
+  }
+
+  getClientId(): string | null {
+    return sessionStorage.getItem(this.KEYS.CLIENT_ID);
+  }
+
+  private setClientId(id: string): void {
+    sessionStorage.setItem(this.KEYS.CLIENT_ID, id);
+  }
+
+  saveGameSession(gameCode: string, player: Player | null, isAdmin = false): void {
+    localStorage.setItem(this.KEYS.GAME_CODE, gameCode);
+    localStorage.setItem(this.KEYS.IS_ADMIN, String(isAdmin));
+    
+    if (player) {
+      localStorage.setItem(this.KEYS.PLAYER_ID, player.id);
+      localStorage.setItem(this.KEYS.PLAYER, JSON.stringify(player));
+    }
+    
+    localStorage.setItem(this.KEYS.PHASE, 'lobby');
+    localStorage.removeItem(this.KEYS.REMOVED);
   }
 
   getSession(): GameSession {
     return {
-      gameCode: localStorage.getItem(this.STORAGE_KEYS.GAME_CODE),
-      playerId: localStorage.getItem(this.STORAGE_KEYS.PLAYER_ID),
-      player: JSON.parse(localStorage.getItem(this.STORAGE_KEYS.PLAYER) || 'null'),
-      phase: localStorage.getItem(this.STORAGE_KEYS.PHASE),
-      isAdmin: !!localStorage.getItem(this.STORAGE_KEYS.ADMIN_GAME)
+      gameCode: localStorage.getItem(this.KEYS.GAME_CODE),
+      playerId: localStorage.getItem(this.KEYS.PLAYER_ID),
+      player: JSON.parse(localStorage.getItem(this.KEYS.PLAYER) || 'null'),
+      phase: localStorage.getItem(this.KEYS.PHASE),
+      isAdmin: localStorage.getItem(this.KEYS.IS_ADMIN) === 'true'
     };
   }
 
-  clearSession(wasRemoved = false) {
+  clearSession(wasRemoved = false): void {
     if (wasRemoved) {
-      localStorage.setItem(this.STORAGE_KEYS.PLAYER_REMOVED, 'true');
+      localStorage.setItem(this.KEYS.REMOVED, 'true');
     }
     
-    Object.values(this.STORAGE_KEYS).forEach(key => {
-      if (key !== this.STORAGE_KEYS.PLAYER_REMOVED) {
+    Object.values(this.KEYS).forEach(key => {
+      if (key !== this.KEYS.CLIENT_ID && key !== this.KEYS.REMOVED) {
         localStorage.removeItem(key);
       }
     });
@@ -53,19 +76,15 @@ class SessionManager {
 
   isValidSession(): boolean {
     const session = this.getSession();
-    return !!(session.gameCode && session.playerId && session.player);
-  }
-
-  markPlayerRemoved() {
-    localStorage.setItem(this.STORAGE_KEYS.PLAYER_REMOVED, 'true');
+    return session.isAdmin ? !!session.gameCode : !!(session.gameCode && session.playerId && session.player);
   }
 
   wasPlayerRemoved(): boolean {
-    return localStorage.getItem(this.STORAGE_KEYS.PLAYER_REMOVED) === 'true';
+    return localStorage.getItem(this.KEYS.REMOVED) === 'true';
   }
 
-  clearPlayerRemovedFlag() {
-    localStorage.removeItem(this.STORAGE_KEYS.PLAYER_REMOVED);
+  clearRemovedFlag(): void {
+    localStorage.removeItem(this.KEYS.REMOVED);
   }
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlayCircle, XCircle } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
+import { sessionManager } from '../../utils/sessionManager';
 
 interface GameControlsProps {
   onCreateGame: () => void;
@@ -8,14 +9,15 @@ interface GameControlsProps {
 }
 
 export default function GameControls({ onCreateGame, isSocketInitialized }: GameControlsProps) {
-  const { gameCode, setGameCode, updatePlayers, socketService } = useGameStore();
+  const { gameCode, socketService, reset } = useGameStore();
 
   const handleEndGame = () => {
-    if (gameCode) {
-      socketService.endGame(gameCode);
-      setGameCode(null);
-      updatePlayers([]);
-    }
+    if (!gameCode) return;
+    
+    console.log('Ending game:', gameCode);
+    socketService.socket.emit('end-game', { code: gameCode });
+    sessionManager.clearSession();
+    reset();
   };
 
   return (
