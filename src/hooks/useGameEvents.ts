@@ -20,8 +20,7 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
       
       if (gameCode && stillInGame) {
         updatePlayers(updatedPlayers);
-      } else if (!stillInGame && !localStorage.getItem('playerRemoved')) {
-        // Only handle disconnection if we didn't voluntarily leave
+      } else if (!localStorage.getItem('playerRemoved')) {
         console.log('Player no longer in game, redirecting to join page');
         clearGameSession();
         reset();
@@ -50,24 +49,12 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
       navigate('/', { replace: true });
     };
 
-    const handleReconnect = () => {
-      console.log('Socket reconnected, rejoining game');
-      const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
-      const currentGameCode = localStorage.getItem('currentGameCode');
-      
-      if (currentGameCode && currentPlayer.id) {
-        socketService.joinGame(currentGameCode, currentPlayer);
-      }
-    };
-
-    socketService.socket.on('connect', handleReconnect);
-    socketService.onPlayersUpdated(handlePlayersUpdate);
+    socketService.socket.on('players-updated', handlePlayersUpdate);
     socketService.socket.on('player-removed', handlePlayerRemoved);
     socketService.socket.on('game-ended', handleGameEnded);
 
     return () => {
-      socketService.socket.off('connect', handleReconnect);
-      socketService.offPlayersUpdated();
+      socketService.socket.off('players-updated', handlePlayersUpdate);
       socketService.socket.off('player-removed', handlePlayerRemoved);
       socketService.socket.off('game-ended', handleGameEnded);
     };

@@ -37,13 +37,6 @@ export default class SocketService {
     }
   }
 
-  public createGame(code: string, maxPlayers: number, rooms: string[]) {
-    if (this.socket.connected) {
-      console.log('Emitting create-game:', { code, maxPlayers, rooms });
-      this.socket.emit('create-game', { code, maxPlayers, rooms });
-    }
-  }
-
   public removePlayer(gameCode: string, playerId: string) {
     if (this.socket.connected) {
       console.log('Emitting remove-player:', { gameCode, playerId });
@@ -62,13 +55,5 @@ export default class SocketService {
         resolve(response.exists);
       });
     });
-  }
-
-  public onPlayersUpdated(callback: (players: Player[]) => void) {
-    this.socket.on('players-updated', callback);
-  }
-
-  public offPlayersUpdated() {
-    this.socket.off('players-updated');
   }
 }
