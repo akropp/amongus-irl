@@ -14,65 +14,39 @@ export default function JoinGame() {
   const { socketService, setGameCode: updateGameCode, addPlayer, reset, players } = useGameStore();
   const isConnected = useSocket();
 
-  // Check for existing session on mount
   useEffect(() => {
-    const checkExistingSession = async () => {
+    const checkExistingSession = () => {
       const savedGameCode = localStorage.getItem('currentGameCode');
       const savedPlayerId = localStorage.getItem('currentPlayerId');
       const savedPlayer = localStorage.getItem('currentPlayer');
       
       if (savedGameCode && savedPlayerId && savedPlayer) {
-        // Verify if the player is still in the game
         const isPlayerActive = players.some(p => p.id === savedPlayerId);
-        
         if (isPlayerActive) {
           navigate(`/lobby/${savedPlayerId}`);
           return;
-        } else {
-          // Clear invalid session
-          localStorage.removeItem('currentGameCode');
-          localStorage.removeItem('currentPlayerId');
-          localStorage.removeItem('currentPlayer');
-          localStorage.removeItem('gamePhase');
-          reset();
         }
       }
       
+      // Clear any stale session data
+      localStorage.removeItem('currentGameCode');
+      localStorage.removeItem('currentPlayerId');
+      localStorage.removeItem('currentPlayer');
+      localStorage.removeItem('gamePhase');
+      reset();
       setIsLoading(false);
     };
 
-    // Short timeout to allow socket connection
-    setTimeout(checkExistingSession, 500);
-  }, [navigate, reset, players]);
-
-  useEffect(() => {
-    const handleJoinSuccess = ({ player, gameCode, players }) => {
-      console.log('Join success:', { player, gameCode, players });
-      updateGameCode(gameCode);
-      players.forEach(p => addPlayer(p));
-      
-      localStorage.setItem('currentGameCode', gameCode);
-      localStorage.setItem('currentPlayerId', player.id);
-      localStorage.setItem('currentPlayer', JSON.stringify(player));
-      localStorage.setItem('gamePhase', 'lobby');
-      
-      navigate(`/lobby/${player.id}`);
-    };
-
-    const handleJoinError = (error) => {
-      console.error('Join error:', error);
-      setError(error.message);
-      setIsLoading(false);
-    };
-
-    socketService.onJoinGameSuccess(handleJoinSuccess);
-    socketService.onJoinGameError(handleJoinError);
-
-    return () => {
-      socketService.offJoinGameSuccess();
-      socketService.offJoinGameError();
-    };
-  }, [socketService, navigate, updateGameCode, addPlayer]);
+    if (isConnected) {
+      checkExistingSession();
+    } else {
+      // Wait for socket connection
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [navigate, reset, players, isConnected]);
 
   const handleJoinGame = () => {
     setError('');
@@ -109,6 +83,33 @@ export default function JoinGame() {
     socketService.joinGame(normalizedInputCode, newPlayer);
   };
 
+  useEffect(() => {
+    const handleJoinSuccess = ({ player, gameCode, players }) => {
+      updateGameCode(gameCode);
+      players.forEach(p => addPlayer(p));
+      
+      localStorage.setItem('currentGameCode', gameCode);
+      localStorage.setItem('currentPlayerId', player.id);
+      localStorage.setItem('currentPlayer', JSON.stringify(player));
+      localStorage.setItem('gamePhase', 'lobby');
+      
+      navigate(`/lobby/${player.id}`);
+    };
+
+    const handleJoinError = (error) => {
+      setError(error.message);
+      setIsLoading(false);
+    };
+
+    socketService.onJoinGameSuccess(handleJoinSuccess);
+    socketService.onJoinGameError(handleJoinError);
+
+    return () => {
+      socketService.offJoinGameSuccess();
+      socketService.offJoinGameError();
+    };
+  }, [socketService, navigate, updateGameCode, addPlayer]);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -124,13 +125,9 @@ export default function JoinGame() {
         </div>
         
         <div className="mt-8 space-y-6">
-          {isConnected ? (
-            <div className="bg-green-900/50 text-green-200 p-3 rounded-md text-sm">
-              Connected to server
-            </div>
-          ) : (
+          {error && (
             <div className="bg-red-900/50 text-red-200 p-3 rounded-md text-sm">
-              Not connected to server. Please refresh the page.
+              {error}
             </div>
           )}
 
@@ -167,12 +164,6 @@ export default function JoinGame() {
               />
             </div>
           </div>
-
-          {error && (
-            <div className="bg-red-900/50 text-red-200 p-3 rounded-md text-sm">
-              {error}
-            </div>
-          )}
 
           <button
             onClick={handleJoinGame}
