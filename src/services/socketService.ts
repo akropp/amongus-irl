@@ -27,6 +27,7 @@ export default class SocketService {
 
   public joinGame(gameCode: string, player: Player) {
     if (this.socket.connected) {
+      console.log('Joining game:', gameCode, player);
       this.socket.emit('join-game', { gameCode, player });
     }
   }
@@ -39,13 +40,14 @@ export default class SocketService {
 
   public verifyGame(code: string): Promise<boolean> {
     return new Promise((resolve) => {
-      if (this.socket.connected) {
-        this.socket.emit('verify-game', { code }, (response) => {
-          resolve(response.exists);
-        });
-      } else {
+      if (!this.socket.connected) {
         resolve(false);
+        return;
       }
+      
+      this.socket.emit('verify-game', { code }, (response: { exists: boolean }) => {
+        resolve(response?.exists ?? false);
+      });
     });
   }
 

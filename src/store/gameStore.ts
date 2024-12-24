@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { GameState, Player, Task } from '../types/game';
+import { GameState, Player } from '../types/game';
 import { HomeAssistantService } from '../services/homeAssistant';
 import SocketService from '../services/socketService';
 import { saveGameSession } from '../utils/sessionHelpers';
@@ -58,7 +58,10 @@ export const useGameStore = create<GameStore>()(
       },
       
       updatePlayers: (players) => {
-        set({ players });
+        const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+        if (currentPlayer.id && players.some(p => p.id === currentPlayer.id)) {
+          set({ players });
+        }
       },
         
       removePlayer: (playerId) => {
@@ -82,6 +85,9 @@ export const useGameStore = create<GameStore>()(
     {
       name: 'game-storage',
       partialize: (state) => ({
+        gameCode: state.gameCode,
+        players: state.players,
+        phase: state.phase,
         maxPlayers: state.maxPlayers
       })
     }

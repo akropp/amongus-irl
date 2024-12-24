@@ -31,14 +31,13 @@ export function usePageRefresh() {
         socketService.joinGame(session.gameCode, session.player);
       }
 
-      // Only redirect if the player is actually not in the game anymore
-      const isPlayerInGame = players.some(p => p.id === session.playerId);
-      const isPlayerRemoved = localStorage.getItem('playerRemoved') === 'true';
-      
-      if (!isPlayerInGame && isPlayerRemoved) {
-        clearGameSession();
-        localStorage.removeItem('playerRemoved');
-        navigate('/');
+      // Only check player existence if we have players loaded
+      if (players.length > 0) {
+        const isPlayerInGame = players.some(p => p.id === session.playerId);
+        if (!isPlayerInGame) {
+          clearGameSession();
+          navigate('/');
+        }
       }
     };
 

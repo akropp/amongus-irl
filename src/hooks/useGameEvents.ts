@@ -9,8 +9,10 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
   useEffect(() => {
     const handlePlayersUpdate = (updatedPlayers: Player[]) => {
       console.log('Players updated:', updatedPlayers);
-      // Only update if we're still in a game
-      if (gameCode) {
+      const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+      
+      // Only update if we're still in a game and our player still exists
+      if (gameCode && updatedPlayers.some(p => p.id === currentPlayer.id)) {
         updatePlayers(updatedPlayers);
       }
     };
@@ -18,8 +20,10 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
     const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
       console.log('Player removed:', playerId);
       const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+      
+      // Only handle removal if we're the removed player
       if (currentPlayer.id === playerId) {
-        localStorage.setItem('playerRemoved', 'true');
+        clearGameSession();
         if (onPlayerRemoved) {
           onPlayerRemoved(playerId);
         }
@@ -31,7 +35,6 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
       clearGameSession();
       setGameCode(null);
       updatePlayers([]);
-      window.location.href = '/';
     };
 
     socketService.onPlayersUpdated(handlePlayersUpdate);
