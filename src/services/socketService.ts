@@ -1,7 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { Player } from '../types/game';
-
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -11,21 +10,14 @@ class SocketService {
   private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
 
   constructor() {
-    console.log('Initializing socket service with URL:', SOCKET_URL);
+    console.log('Initializing socket service with URL:', SERVER_URL);
     this.initializeSocket();
   }
 
   private initializeSocket(): void {
     if (this.socket?.connected) return;
 
-    this.socket = io(SOCKET_URL, {
-      transports: ['websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      timeout: 10000,
-      withCredentials: true
-    });
-
+    this.socket = io(SERVER_URL, SOCKET_OPTIONS);
     this.setupListeners();
   }
 
