@@ -59,15 +59,21 @@ export default class SocketService {
   }
 
   public joinGame(gameCode: string, player: Player) {
-    this.socket.emit('join-game', { gameCode, player });
+    if (this.socket.connected) {
+      this.socket.emit('join-game', { gameCode, player });
+    }
   }
 
   public createGame(code: string, maxPlayers: number, rooms: string[]) {
-    this.socket.emit('create-game', { code, maxPlayers, rooms });
+    if (this.socket.connected) {
+      this.socket.emit('create-game', { code, maxPlayers, rooms });
+    }
   }
 
   public removePlayer(gameCode: string, playerId: string) {
-    this.socket.emit('remove-player', { gameCode, playerId });
+    if (this.socket.connected) {
+      this.socket.emit('remove-player', { gameCode, playerId });
+    }
   }
 
   public onJoinGameSuccess(callback: (data: { player: Player; gameCode: string; players: Player[] }) => void): void {
@@ -94,6 +100,10 @@ export default class SocketService {
     this.joinGameErrorCallback = null;
   }
 
+  public offPlayersUpdated(): void {
+    this.playersUpdateCallback = null;
+  }
+
   public offDisconnect(): void {
     this.disconnectCallback = null;
   }
@@ -108,5 +118,9 @@ export default class SocketService {
 
   public onGameStarted(callback: () => void): void {
     this.gameStartedCallback = callback;
+  }
+
+  public offGameStarted(): void {
+    this.gameStartedCallback = null;
   }
 }

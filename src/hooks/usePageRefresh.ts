@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { useSocket } from '../hooks/useSocket';
+import { useSocket } from './useSocket';
 
 export function usePageRefresh() {
   const location = useLocation();
@@ -38,11 +38,16 @@ export function usePageRefresh() {
       }
 
       // Reconnect if needed
-      if ((players.length === 0 || !players.find(p => p.id === savedPlayerId)) && savedGameCode && savedPlayerId && isConnected) {
+      if (isConnected && savedGameCode && savedPlayerId) {
         const savedPlayerData = localStorage.getItem('currentPlayer');
         if (savedPlayerData) {
           const player = JSON.parse(savedPlayerData);
-          socketService.joinGame(savedGameCode, player);
+          const currentPlayer = players.find(p => p.id === savedPlayerId);
+          
+          // Only rejoin if player is not already in the game
+          if (!currentPlayer) {
+            socketService.joinGame(savedGameCode, player);
+          }
         }
       }
 

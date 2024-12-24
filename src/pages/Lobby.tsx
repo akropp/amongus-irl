@@ -23,26 +23,29 @@ export default function Lobby() {
     socketService.onPlayersUpdated(handlePlayersUpdate);
 
     return () => {
-      socketService.socket.off('players-updated', handlePlayersUpdate);
+      socketService.offPlayersUpdated();
     };
   }, [socketService]);
 
   const currentPlayer = players.find(p => p.id === playerId);
 
-  if (!currentPlayer) {
-    // Try to reconnect if we have saved data
-    const savedGameCode = localStorage.getItem('currentGameCode');
-    const savedPlayer = localStorage.getItem('currentPlayer');
-    
-    if (savedGameCode && savedPlayer && isConnected) {
-      socketService.joinGame(savedGameCode, JSON.parse(savedPlayer));
-      return null;
+  // Handle reconnection if needed
+  useEffect(() => {
+    if (!currentPlayer && isConnected) {
+      const savedGameCode = localStorage.getItem('currentGameCode');
+      const savedPlayer = localStorage.getItem('currentPlayer');
+      
+      if (savedGameCode && savedPlayer) {
+        socketService.joinGame(savedGameCode, JSON.parse(savedPlayer));
+      }
     }
+  }, [currentPlayer, isConnected, socketService]);
 
+  if (!currentPlayer) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center text-red-400">
-          Player not found. Please rejoin the game.
+          Reconnecting to game...
         </div>
       </div>
     );
@@ -61,7 +64,6 @@ export default function Lobby() {
             Game Lobby
           </h1>
 
-          {/* Game Code Display */}
           <div className="mb-8 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-900/50 rounded-lg border border-purple-500">
               <Hash className="w-5 h-5 text-purple-400" />
