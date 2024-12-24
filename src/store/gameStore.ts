@@ -44,7 +44,6 @@ const useGameStore = create<GameStore>()(
         const normalizedCode = code.trim().toUpperCase();
         set({ gameCode: normalizedCode });
         
-        // Only create a new game if we're in the admin panel
         if (normalizedCode && window.location.pathname === '/admin') {
           get().socketService.createGame(
             normalizedCode,

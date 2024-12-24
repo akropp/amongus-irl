@@ -12,7 +12,6 @@ class SocketService {
   private maxReconnectAttempts = 5;
 
   constructor() {
-    console.log('Initializing socket service with URL:', SERVER_URL);
     this.initializeSocket();
   }
 
@@ -37,45 +36,38 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      console.log('Socket connected successfully');
       this.reconnectAttempts = 0;
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+    this.socket.on('connect_error', () => {
       setTimeout(() => this.initializeSocket(), 2000);
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
       if (reason === 'io server disconnect') {
         setTimeout(() => this.initializeSocket(), 2000);
       }
     });
 
     this.socket.on('players-updated', (players: Player[]) => {
-      console.log('Players updated:', players);
       if (this.playersUpdateCallback) {
         this.playersUpdateCallback(players);
       }
     });
 
     this.socket.on('game-created', (data: { code: string }) => {
-      console.log('Game created:', data);
       if (this.gameCreatedCallback) {
         this.gameCreatedCallback(data);
       }
     });
 
     this.socket.on('join-game-success', (data: { player: Player, gameCode: string }) => {
-      console.log('Join game success:', data);
       if (this.joinGameSuccessCallback) {
         this.joinGameSuccessCallback(data);
       }
     });
 
     this.socket.on('join-game-error', (error: { message: string }) => {
-      console.error('Join game error:', error);
       if (this.joinGameErrorCallback) {
         this.joinGameErrorCallback(error);
       }
@@ -83,9 +75,7 @@ class SocketService {
   }
 
   public createGame(code: string, maxPlayers: number, rooms: string[]): void {
-    console.log('Creating game:', { code, maxPlayers, rooms });
     if (!this.socket?.connected) {
-      console.log('Socket not connected, attempting to reconnect...');
       this.initializeSocket();
       setTimeout(() => this.createGame(code, maxPlayers, rooms), 1000);
       return;
@@ -94,9 +84,7 @@ class SocketService {
   }
 
   public joinGame(gameCode: string, player: Player): void {
-    console.log('Joining game:', { gameCode, player });
     if (!this.socket?.connected) {
-      console.log('Socket not connected, attempting to reconnect...');
       this.initializeSocket();
       setTimeout(() => this.joinGame(gameCode, player), 1000);
       return;
@@ -105,7 +93,6 @@ class SocketService {
   }
 
   public startGame(gameCode: string, players: Player[]): void {
-    console.log('Starting game:', { gameCode, players });
     if (!this.socket?.connected) return;
     this.socket.emit('start-game', { gameCode, players });
   }
@@ -131,7 +118,6 @@ class SocketService {
   }
 
   public reconnect(): void {
-    console.log('Manually reconnecting socket...');
     this.reconnectAttempts = 0;
     this.initializeSocket();
   }
