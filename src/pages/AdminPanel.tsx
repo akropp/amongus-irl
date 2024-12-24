@@ -31,15 +31,18 @@ export default function AdminPanel() {
       setIsInitializing(false);
     }
 
-    const handleGameCreated = ({ code }: { code: string }) => {
-      console.log('Game created:', code);
-      setGameCode(code);
+    const handleGameCreated = (data: { code: string; maxPlayers: number; rooms: string[] }) => {
+      console.log('Game created:', data.code);
+      setGameCode(data.code);
+      localStorage.setItem('adminGameCode', data.code);
     };
 
-    socketService.onGameCreated(handleGameCreated);
+    // Set up socket event listener
+    socketService.socket.on('game-created', handleGameCreated);
 
     return () => {
-      socketService.offGameCreated();
+      // Clean up socket event listener
+      socketService.socket.off('game-created', handleGameCreated);
     };
   }, [isSocketInitialized, socketService, setGameCode]);
 
