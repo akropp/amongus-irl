@@ -16,6 +16,13 @@ export function getGameSession(): GameSession {
   };
 }
 
+export function saveGameSession(session: Partial<GameSession>) {
+  if (session.gameCode) localStorage.setItem('currentGameCode', session.gameCode);
+  if (session.playerId) localStorage.setItem('currentPlayerId', session.playerId);
+  if (session.player) localStorage.setItem('currentPlayer', JSON.stringify(session.player));
+  if (session.phase) localStorage.setItem('gamePhase', session.phase);
+}
+
 export function clearGameSession() {
   localStorage.removeItem('currentGameCode');
   localStorage.removeItem('currentPlayerId');
@@ -29,5 +36,11 @@ export function isValidGameSession(session: GameSession, currentPlayers: Player[
   }
 
   // Verify the player exists in the current game
-  return currentPlayers.some(p => p.id === session.playerId);
+  const playerExists = currentPlayers.some(p => p.id === session.playerId);
+  if (!playerExists) {
+    clearGameSession();
+    return false;
+  }
+
+  return true;
 }

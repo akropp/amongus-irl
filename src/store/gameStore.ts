@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { GameState, Player, Task } from '../types/game';
 import { HomeAssistantService } from '../services/homeAssistant';
 import SocketService from '../services/socketService';
+import { saveGameSession } from '../utils/sessionHelpers';
 
 interface GameStore extends GameState {
   haService: HomeAssistantService | null;
@@ -35,14 +36,16 @@ export const useGameStore = create<GameStore>()(
       setGameCode: (code) => {
         const normalizedCode = code.trim().toUpperCase();
         set({ gameCode: normalizedCode });
+        saveGameSession({ gameCode: normalizedCode });
       },
       
       addPlayer: (player) => {
-        set(state => ({
-          players: state.players.find(p => p.id === player.id)
+        set(state => {
+          const newPlayers = state.players.find(p => p.id === player.id)
             ? state.players.map(p => p.id === player.id ? { ...p, ...player } : p)
-            : [...state.players, player]
-        }));
+            : [...state.players, player];
+          return { players: newPlayers };
+        });
       },
       
       updatePlayers: (players) => {
@@ -59,7 +62,7 @@ export const useGameStore = create<GameStore>()(
       
       setPhase: (phase) => {
         set({ phase });
-        localStorage.setItem('gamePhase', phase);
+        saveGameSession({ phase });
       },
       
       reset: () => {

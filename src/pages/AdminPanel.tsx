@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, PlayCircle } from 'lucide-react';
+import { PlayCircle } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
@@ -7,20 +7,17 @@ import RoomManager from '../components/admin/RoomManager';
 import TaskCreator from '../components/admin/TaskCreator';
 import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
 import SabotageConfig from '../components/admin/SabotageConfig';
+import PlayerManager from '../components/admin/PlayerManager';
 
 export default function AdminPanel() {
   const [error, setError] = useState('');
   const { 
     gameCode,
-    players,
     setGameCode,
-    removePlayer,
-    reset,
     socketService
   } = useGameStore();
 
   const {
-    isConnected: isHAConnected,
     rooms,
   } = useAdminStore();
 
@@ -40,12 +37,6 @@ export default function AdminPanel() {
   const handleCreateGame = () => {
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     socketService.createGame(newGameCode, useGameStore.getState().maxPlayers, rooms);
-  };
-
-  const handleRemovePlayer = (playerId: string) => {
-    if (gameCode) {
-      socketService.removePlayer(gameCode, playerId);
-    }
   };
 
   return (
@@ -77,6 +68,7 @@ export default function AdminPanel() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <PlayerManager />
           <HomeAssistantSetup />
           <MaxPlayersConfig />
           <RoomManager />
