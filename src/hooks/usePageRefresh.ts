@@ -5,24 +5,37 @@ import { useGameStore } from '../store/gameStore';
 export function usePageRefresh() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { gameCode, players, socketService } = useGameStore();
+  const { gameCode, players, socketService, phase } = useGameStore();
 
   useEffect(() => {
-    // Check if we're on an admin page
-    if (location.pathname === '/admin') {
-      return; // Admin page doesn't need game state checks
-    }
-
-    // For player pages, check if we have valid game state
     const savedGameCode = localStorage.getItem('currentGameCode');
     const savedPlayerId = localStorage.getItem('currentPlayerId');
+    const savedPhase = localStorage.getItem('gamePhase');
     
-    if (!gameCode && savedGameCode) {
-      useGameStore.getState().setGameCode(savedGameCode);
+    // Handle admin page
+    if (location.pathname === '/admin') {
+      if (savedGameCode) {
+        useGameStore.getState().setGameCode(savedGameCode);
+      }
+      return;
     }
 
-    // If we're on a player page but have no players, try to reconnect
+    // Handle game not found
+    if (!gameCode && !savedGameCode) {
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
+      return;
+    }
+
+    // Handle player pages
     if (location.pathname.includes('/lobby/') || location.pathname.includes('/game/')) {
+      if (!savedPlayerId) {
+        navigate('/');
+        return;
+      }
+
+      // Reconnect if needed
       if (players.length === 0 && savedGameCode && savedPlayerId) {
         const savedPlayerData = localStorage.getItem('currentPlayer');
         if (savedPlayerData) {
@@ -31,9 +44,14 @@ export function usePageRefresh() {
         } else {
           navigate('/');
         }
-      } else if (!savedPlayerId) {
-        navigate('/');
+      }
+
+      // Redirect based on game phase
+      if (savedPhase === 'playing' && location.pathname.includes('/lobby/')) {
+        navigate(`/game/${savedPlayerId}`);
+      } else if (savedPhase === 'lobby' && location.pathname.includes('/game/')) {
+        navigate(`/lobby/${savedPlayerId}`);
       }
     }
-  }, [gameCode, location.pathname, navigate, players, socketService]);
+  }, [gameCode, location.pathname, navigate, players, socketService, phase]);
 }
