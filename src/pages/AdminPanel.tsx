@@ -19,21 +19,20 @@ export default function AdminPanel() {
     setGameCode,
     socketService,
     updatePlayers,
-    players
   } = useGameStore();
 
-  const {
-    rooms,
-  } = useAdminStore();
-
-  const isConnected = useSocketInit();
+  const { rooms } = useAdminStore();
+  const isSocketInitialized = useSocketInit();
 
   useEffect(() => {
     const init = async () => {
       try {
-        // Wait for socket connection
-        if (!isConnected) {
-          return;
+        if (!isSocketInitialized) return;
+
+        // Restore game code from storage if exists
+        const storedGameCode = localStorage.getItem('adminGameCode');
+        if (storedGameCode && !gameCode) {
+          setGameCode(storedGameCode);
         }
 
         const handleGameCreated = ({ code }) => {
@@ -63,14 +62,14 @@ export default function AdminPanel() {
     };
 
     init();
-  }, [socketService, setGameCode, updatePlayers, isConnected]);
+  }, [socketService, setGameCode, updatePlayers, isSocketInitialized, gameCode]);
 
   if (isInitializing) {
     return <LoadingSpinner />;
   }
 
   const handleCreateGame = () => {
-    if (!isConnected) {
+    if (!isSocketInitialized) {
       setError('Not connected to server');
       return;
     }
@@ -86,7 +85,7 @@ export default function AdminPanel() {
           {!gameCode ? (
             <button
               onClick={handleCreateGame}
-              disabled={!isConnected}
+              disabled={!isSocketInitialized}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
             >
               <PlayCircle className="w-5 h-5" />

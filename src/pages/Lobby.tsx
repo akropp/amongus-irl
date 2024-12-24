@@ -1,15 +1,16 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Users } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { usePageRefresh } from '../hooks/usePageRefresh';
 import { useSocket } from '../hooks/useSocket';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { GameActions } from '../components/game/GameActions';
+import { LobbyPlayerList } from '../components/game/LobbyPlayerList';
+import { getGameSession } from '../utils/sessionHelpers';
 
 export default function Lobby() {
   const { playerId } = useParams();
-  const { players, phase, gameCode, socketService, updatePlayers } = useGameStore();
+  const { players, phase, gameCode, socketService } = useGameStore();
   const navigate = useNavigate();
   const isConnected = useSocket();
   
@@ -17,21 +18,26 @@ export default function Lobby() {
 
   const currentPlayer = players.find(p => p.id === playerId);
 
-  // Redirect to login if no player or game code
+  useEffect(() => {
+    if (isConnected) {
+      const session = getGameSession();
+      if (session.gameCode && session.player && !currentPlayer) {
+        socketService.joinGame(session.gameCode, session.player);
+      }
+    }
+  }, [isConnected, currentPlayer, socketService]);
+
   useEffect(() => {
     if (!currentPlayer || !gameCode) {
       navigate('/', { replace: true });
-      return;
     }
   }, [currentPlayer, gameCode, navigate]);
 
-  // Redirect to game if phase is playing
   if (phase === 'playing') {
     navigate(`/game/${playerId}`);
     return null;
   }
 
-  // Show loading state while checking player/game status
   if (!currentPlayer || !gameCode) {
     return <LoadingSpinner />;
   }
@@ -52,29 +58,7 @@ export default function Lobby() {
           <p className="mt-2 text-gray-400">Share this code with other players</p>
         </div>
 
-        <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Players ({players.length})
-          </h2>
-          <ul className="space-y-2">
-            {players.map(player => (
-              <li
-                key={player.id}
-                className={`p-3 rounded-lg ${
-                  player.id === playerId 
-                    ? 'bg-purple-900/50 border border-purple-500'
-                    : 'bg-slate-700'
-                }`}
-              >
-                {player.name}
-                {player.id === playerId && (
-                  <span className="ml-2 text-sm text-purple-400">(You)</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <LobbyPlayerList currentPlayerId={playerId} />
       </div>
     </div>
   );
