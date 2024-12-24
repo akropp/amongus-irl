@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { PlayCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
@@ -8,6 +7,7 @@ import TaskCreator from '../components/admin/TaskCreator';
 import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
 import SabotageConfig from '../components/admin/SabotageConfig';
 import PlayerManager from '../components/admin/PlayerManager';
+import GameControls from '../components/admin/GameControls';
 import { useSocketInit } from '../hooks/useSocketInit';
 import { useGameVerification } from '../hooks/useGameVerification';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
@@ -26,11 +26,22 @@ export default function AdminPanel() {
   
   useGameVerification();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isSocketInitialized) {
       setIsInitializing(false);
     }
-  }, [isSocketInitialized]);
+
+    const handleGameCreated = ({ code }: { code: string }) => {
+      console.log('Game created:', code);
+      setGameCode(code);
+    };
+
+    socketService.onGameCreated(handleGameCreated);
+
+    return () => {
+      socketService.offGameCreated();
+    };
+  }, [isSocketInitialized, socketService, setGameCode]);
 
   if (isInitializing) {
     return <LoadingSpinner />;
@@ -48,25 +59,10 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-slate-900 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
-          {!gameCode ? (
-            <button
-              onClick={handleCreateGame}
-              disabled={!isSocketInitialized}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
-            >
-              <PlayCircle className="w-5 h-5" />
-              Create New Game
-            </button>
-          ) : (
-            <div className="flex items-center gap-4">
-              <p className="text-xl">
-                Game Code: <span className="font-mono font-bold text-purple-400">{gameCode}</span>
-              </p>
-            </div>
-          )}
-        </div>
+        <GameControls 
+          onCreateGame={handleCreateGame}
+          isSocketInitialized={isSocketInitialized}
+        />
 
         {error && (
           <div className="bg-red-900/50 text-red-200 p-4 rounded-lg">
@@ -75,13 +71,18 @@ export default function AdminPanel() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {gameCode && <PlayerManager />}
           <HomeAssistantSetup />
           <MaxPlayersConfig />
           <RoomManager />
           <TaskCreator />
           <SabotageConfig />
         </div>
+
+        {gameCode && (
+          <div className="mt-8">
+            <PlayerManager />
+          </div>
+        )}
       </div>
     </div>
   );
