@@ -12,9 +12,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isConnected: isAdmin } = useAdminStore();
   const path = window.location.pathname;
 
-  // Allow admin access if connected
+  // Allow admin access without game code check
   if (path === '/admin') {
-    return isAdmin ? <>{children}</> : <Navigate to="/" replace />;
+    return <>{children}</>;
   }
 
   // For game routes, check if there's an active game

@@ -8,6 +8,8 @@ class SocketService {
   private gameCreatedCallback: ((data: { code: string }) => void) | null = null;
   private joinGameSuccessCallback: ((data: { player: Player, gameCode: string }) => void) | null = null;
   private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   constructor() {
     console.log('Initializing socket service with URL:', SERVER_URL);
@@ -17,8 +19,18 @@ class SocketService {
   private initializeSocket(): void {
     if (this.socket?.connected) return;
 
-    this.socket = io(SERVER_URL, SOCKET_OPTIONS);
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached');
+      return;
+    }
+
+    this.socket = io(SERVER_URL, {
+      ...SOCKET_OPTIONS,
+      forceNew: true
+    });
+    
     this.setupListeners();
+    this.reconnectAttempts++;
   }
 
   private setupListeners(): void {
@@ -26,10 +38,19 @@ class SocketService {
 
     this.socket.on('connect', () => {
       console.log('Socket connected successfully');
+      this.reconnectAttempts = 0;
     });
 
     this.socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
+      setTimeout(() => this.initializeSocket(), 2000);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        setTimeout(() => this.initializeSocket(), 2000);
+      }
     });
 
     this.socket.on('players-updated', (players: Player[]) => {
@@ -111,6 +132,7 @@ class SocketService {
 
   public reconnect(): void {
     console.log('Manually reconnecting socket...');
+    this.reconnectAttempts = 0;
     this.initializeSocket();
   }
 }

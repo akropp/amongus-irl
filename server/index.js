@@ -19,7 +19,8 @@ const httpServer = createServer(app);
 const allowedOrigins = [
   'https://radiant-druid-cda853.netlify.app',
   'http://localhost:5173',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'https://amongus-irl.onrender.com'
 ];
 
 const io = new Server(httpServer, {
@@ -30,7 +31,8 @@ const io = new Server(httpServer, {
   },
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  transports: ['websocket', 'polling']
 });
 
 // Enable CORS for regular HTTP requests
@@ -40,6 +42,17 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.resolve(__dirname, '../dist');
+  app.use(express.static(distPath));
+  
+  // Handle client-side routing
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
