@@ -1,20 +1,44 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Users, PlayCircle, Hash } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { usePageRefresh } from '../hooks/usePageRefresh';
+import { useSocket } from '../hooks/useSocket';
 
 export default function Lobby() {
   const { playerId } = useParams();
-  const { players, phase, gameCode } = useGameStore();
+  const { players, phase, gameCode, socketService } = useGameStore();
   const navigate = useNavigate();
+  const isConnected = useSocket();
   
   // Handle page refresh and navigation
   usePageRefresh();
 
+  // Handle socket events
+  useEffect(() => {
+    const handlePlayersUpdate = (updatedPlayers) => {
+      useGameStore.getState().updatePlayers(updatedPlayers);
+    };
+
+    socketService.onPlayersUpdated(handlePlayersUpdate);
+
+    return () => {
+      socketService.socket.off('players-updated', handlePlayersUpdate);
+    };
+  }, [socketService]);
+
   const currentPlayer = players.find(p => p.id === playerId);
 
   if (!currentPlayer) {
+    // Try to reconnect if we have saved data
+    const savedGameCode = localStorage.getItem('currentGameCode');
+    const savedPlayer = localStorage.getItem('currentPlayer');
+    
+    if (savedGameCode && savedPlayer && isConnected) {
+      socketService.joinGame(savedGameCode, JSON.parse(savedPlayer));
+      return null;
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center text-red-400">
@@ -48,7 +72,7 @@ export default function Lobby() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Players in Lobby
+              Players in Lobby ({players.length})
             </h2>
             <div className="space-y-2">
               {players.map(player => (

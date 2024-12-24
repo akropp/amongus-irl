@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
+import { useSocket } from '../hooks/useSocket';
 
 export function usePageRefresh() {
   const location = useLocation();
   const navigate = useNavigate();
   const { gameCode, players, socketService, phase } = useGameStore();
+  const isConnected = useSocket();
 
   useEffect(() => {
     const savedGameCode = localStorage.getItem('currentGameCode');
@@ -36,13 +38,11 @@ export function usePageRefresh() {
       }
 
       // Reconnect if needed
-      if (players.length === 0 && savedGameCode && savedPlayerId) {
+      if ((players.length === 0 || !players.find(p => p.id === savedPlayerId)) && savedGameCode && savedPlayerId && isConnected) {
         const savedPlayerData = localStorage.getItem('currentPlayer');
         if (savedPlayerData) {
           const player = JSON.parse(savedPlayerData);
           socketService.joinGame(savedGameCode, player);
-        } else {
-          navigate('/');
         }
       }
 
@@ -53,5 +53,5 @@ export function usePageRefresh() {
         navigate(`/lobby/${savedPlayerId}`);
       }
     }
-  }, [gameCode, location.pathname, navigate, players, socketService, phase]);
+  }, [gameCode, location.pathname, navigate, players, socketService, phase, isConnected]);
 }
