@@ -8,11 +8,14 @@ interface GameControlsProps {
 }
 
 export default function GameControls({ onCreateGame, isSocketInitialized }: GameControlsProps) {
-  const { gameCode, setGameCode, updatePlayers } = useGameStore();
+  const { gameCode, setGameCode, updatePlayers, socketService } = useGameStore();
 
   const handleEndGame = () => {
-    setGameCode(null);
-    updatePlayers([]);
+    if (gameCode) {
+      socketService.endGame(gameCode);
+      setGameCode(null);
+      updatePlayers([]);
+    }
   };
 
   return (

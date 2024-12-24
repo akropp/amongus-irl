@@ -12,6 +12,15 @@ export default function setupSocketHandlers(io) {
       callback({ exists: !!game });
     });
 
+    socket.on('end-game', ({ code }) => {
+      console.log('Ending game:', code);
+      if (gameManager.endGame(code)) {
+        io.to(code).emit('game-ended');
+        // Notify all clients in the game room
+        socket.to(code).emit('game-ended');
+      }
+    });
+
     socket.on('create-game', ({ code, maxPlayers, rooms }) => {
       console.log(`Creating game - Code: ${code}, Max Players: ${maxPlayers}, Rooms:`, rooms);
       try {
@@ -41,7 +50,6 @@ export default function setupSocketHandlers(io) {
         
         if (!game) {
           socket.emit('join-game-error', { message: 'Game not found' });
-          socket.emit('game-not-found');
           return;
         }
 

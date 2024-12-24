@@ -19,6 +19,12 @@ export default class SocketService {
     }
   }
 
+  public endGame(code: string) {
+    if (this.socket.connected) {
+      this.socket.emit('end-game', { code });
+    }
+  }
+
   public joinGame(gameCode: string, player: Player) {
     if (this.socket.connected) {
       this.socket.emit('join-game', { gameCode, player });
@@ -45,6 +51,14 @@ export default class SocketService {
 
   public onGameCreated(callback: (data: { code: string; maxPlayers: number; rooms: string[] }) => void) {
     this.socket.on('game-created', callback);
+  }
+
+  public onGameEnded(callback: () => void) {
+    this.socket.on('game-ended', callback);
+  }
+
+  public offGameEnded() {
+    this.socket.off('game-ended');
   }
 
   public offGameCreated() {

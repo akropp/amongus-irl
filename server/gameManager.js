@@ -1,10 +1,9 @@
 import { EventEmitter } from 'events';
-import { gameQueries } from './db.js';
 
 class GameManager extends EventEmitter {
   constructor() {
     super();
-    this.activeGames = new Map(); // Track active games in memory
+    this.activeGames = new Map();
   }
 
   createGame(code, maxPlayers, rooms) {
@@ -28,6 +27,15 @@ class GameManager extends EventEmitter {
       console.error('GameManager: Error creating game:', error);
       throw error;
     }
+  }
+
+  endGame(code) {
+    console.log('GameManager: Ending game:', code);
+    if (this.activeGames.has(code)) {
+      this.activeGames.delete(code);
+      return true;
+    }
+    return false;
   }
 
   addPlayer(gameCode, player) {
