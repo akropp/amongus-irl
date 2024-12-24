@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
@@ -9,7 +9,9 @@ import SabotageConfig from '../components/admin/SabotageConfig';
 import PlayerManager from '../components/admin/PlayerManager';
 import GameControls from '../components/admin/GameControls';
 import { useSocket } from '../hooks/useSocket';
+import { useSocketEvents } from '../hooks/useSocketEvents';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import { sessionManager } from '../utils/sessionManager';
 
 export default function AdminPanel() {
   const [error, setError] = useState('');
@@ -22,16 +24,9 @@ export default function AdminPanel() {
 
   const { rooms } = useAdminStore();
   const isConnected = useSocket();
-
-  useEffect(() => {
-    const handleGameCreated = (data) => {
-      console.log('Game created:', data);
-      setGameCode(data.code);
-    };
-
-    socketService.socket.on('game-created', handleGameCreated);
-    return () => socketService.socket.off('game-created', handleGameCreated);
-  }, [socketService, setGameCode]);
+  
+  // Use socket events with admin flag
+  useSocketEvents(true);
 
   if (!isConnected) {
     return <LoadingSpinner />;
@@ -49,7 +44,8 @@ export default function AdminPanel() {
     socketService.socket.emit('create-game', { 
       code: newGameCode,
       maxPlayers,
-      rooms
+      rooms,
+      clientId: sessionManager.getClientId()
     });
   };
 

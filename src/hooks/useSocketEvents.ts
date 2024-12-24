@@ -4,8 +4,8 @@ import { useGameStore } from '../store/gameStore';
 import { sessionManager } from '../utils/sessionManager';
 import { Player } from '../types/game';
 
-export function useSocketEvents() {
-  const { socketService, updatePlayers, reset } = useGameStore();
+export function useSocketEvents(isAdmin = false) {
+  const { socketService, updatePlayers, setGameCode, reset } = useGameStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,38 +13,54 @@ export function useSocketEvents() {
       console.log('Socket connected');
       const session = sessionManager.getSession();
       
-      if (session.isValid) {
-        socketService.socket.emit('register-player', {
+      if (session.isValid()) {
+        console.log('Restoring session:', session);
+        socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
-          playerId: session.playerId
+          playerId: session.playerId,
+          clientId: sessionManager.getClientId(),
+          isAdmin
         });
       }
     };
 
-    const handlePlayersUpdate = (updatedPlayers: Player[]) => {
-      const session = sessionManager.getSession();
-      if (!session.playerId) return;
+    const handleGameState = (state: { gameCode: string; players: Player[]; phase: string }) => {
+      console.log('Received game state:', state);
+      setGameCode(state.gameCode);
+      updatePlayers(state.players);
+    };
 
-      const stillInGame = updatedPlayers.some(p => p.id === session.playerId);
-      if (stillInGame) {
-        updatePlayers(updatedPlayers);
-      } else if (!sessionManager.wasPlayerRemoved()) {
-        sessionManager.clearSession();
-        reset();
-        navigate('/', { replace: true });
+    const handlePlayersUpdate = (updatedPlayers: Player[]) => {
+      console.log('Players updated:', updatedPlayers);
+      updatePlayers(updatedPlayers);
+      
+      if (!isAdmin) {
+        const session = sessionManager.getSession();
+        if (!session.playerId) return;
+
+        const stillInGame = updatedPlayers.some(p => p.id === session.playerId);
+        if (!stillInGame && !sessionManager.wasPlayerRemoved()) {
+          sessionManager.clearSession();
+          reset();
+          navigate('/', { replace: true });
+        }
       }
     };
 
     const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
-      const session = sessionManager.getSession();
-      if (session.playerId === playerId) {
-        sessionManager.clearSession(true);
-        reset();
-        navigate('/', { replace: true });
+      console.log('Player removed:', playerId);
+      if (!isAdmin) {
+        const session = sessionManager.getSession();
+        if (session.playerId === playerId) {
+          sessionManager.clearSession(true);
+          reset();
+          navigate('/', { replace: true });
+        }
       }
     };
 
     const handleGameEnded = () => {
+      console.log('Game ended');
       sessionManager.clearSession();
       reset();
       navigate('/', { replace: true });
@@ -52,6 +68,7 @@ export function useSocketEvents() {
 
     // Set up event listeners
     socketService.socket.on('connect', handleConnect);
+    socketService.socket.on('game-state', handleGameState);
     socketService.socket.on('players-updated', handlePlayersUpdate);
     socketService.socket.on('player-removed', handlePlayerRemoved);
     socketService.socket.on('game-ended', handleGameEnded);
@@ -63,9 +80,10 @@ export function useSocketEvents() {
 
     return () => {
       socketService.socket.off('connect', handleConnect);
+      socketService.socket.off('game-state', handleGameState);
       socketService.socket.off('players-updated', handlePlayersUpdate);
       socketService.socket.off('player-removed', handlePlayerRemoved);
       socketService.socket.off('game-ended', handleGameEnded);
     };
-  }, [socketService, updatePlayers, reset, navigate]);
+  }, [socketService, updatePlayers, setGameCode, reset, navigate, isAdmin]);
 }
