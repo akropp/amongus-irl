@@ -121,16 +121,12 @@ export default function AdminPanel() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {gameCode && (
-            <>
-              <PlayerManager />
-              <HomeAssistantSetup />
-              <MaxPlayersConfig />
-              <RoomManager />
-              <TaskCreator />
-              <SabotageConfig />
-            </>
-          )}
+          {gameCode && <PlayerManager />}
+          <HomeAssistantSetup />
+          <MaxPlayersConfig />
+          <RoomManager />
+          <TaskCreator />
+          <SabotageConfig />
         </div>
       </div>
     </div>

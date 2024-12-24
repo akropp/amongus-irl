@@ -15,12 +15,21 @@ export function LobbyPlayerList({ currentPlayerId }: LobbyPlayerListProps) {
       updatePlayers(updatedPlayers);
     };
 
-    socketService.onPlayersUpdated(handlePlayersUpdate);
+    const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
+      if (playerId === currentPlayerId) {
+        // Only redirect if the current player was removed
+        window.location.href = '/';
+      }
+    };
+
+    socketService.socket.on('players-updated', handlePlayersUpdate);
+    socketService.socket.on('player-removed', handlePlayerRemoved);
 
     return () => {
-      socketService.offPlayersUpdated();
+      socketService.socket.off('players-updated', handlePlayersUpdate);
+      socketService.socket.off('player-removed', handlePlayerRemoved);
     };
-  }, [socketService, updatePlayers]);
+  }, [socketService, updatePlayers, currentPlayerId]);
 
   return (
     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">

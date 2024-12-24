@@ -1,15 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Users, UserX } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { Player } from '../../types/game';
 
 export default function PlayerManager() {
-  const { players, gameCode, socketService } = useGameStore();
+  const { players, gameCode, socketService, updatePlayers } = useGameStore();
+
+  useEffect(() => {
+    const handlePlayersUpdate = (updatedPlayers: Player[]) => {
+      updatePlayers(updatedPlayers);
+    };
+
+    socketService.socket.on('players-updated', handlePlayersUpdate);
+
+    return () => {
+      socketService.socket.off('players-updated', handlePlayersUpdate);
+    };
+  }, [socketService, updatePlayers]);
 
   const handleRemovePlayer = (player: Player) => {
     if (!gameCode) return;
-    
-    // Don't trigger a full page refresh when removing players from admin panel
     socketService.removePlayer(gameCode, player.id);
   };
 
