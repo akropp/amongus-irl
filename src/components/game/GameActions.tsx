@@ -13,20 +13,26 @@ export function GameActions({ playerId }: GameActionsProps) {
   const { gameCode, socketService, reset } = useGameStore();
 
   const handleLeaveGame = () => {
-    if (gameCode && playerId) {
-      // Mark player as removed before sending the request
-      sessionManager.markPlayerRemoved();
-      
-      // Emit remove player event
-      socketService.socket.emit('remove-player', { gameCode, playerId });
-      
-      // Clear session and reset store
-      sessionManager.clearSession();
-      reset();
-      
-      // Navigate back to join page
-      navigate('/', { replace: true });
-    }
+    if (!gameCode || !playerId) return;
+
+    console.log('Player leaving game:', { gameCode, playerId });
+    
+    // Mark player as removed to prevent reconnection attempts
+    sessionManager.markPlayerRemoved();
+    
+    // Emit remove player event
+    socketService.socket.emit('remove-player', { 
+      gameCode, 
+      playerId,
+      clientId: socketService.getClientId()
+    });
+    
+    // Clear session and reset store
+    sessionManager.clearSession();
+    reset();
+    
+    // Navigate back to join page
+    navigate('/', { replace: true });
   };
 
   return (

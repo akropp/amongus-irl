@@ -1,68 +1,48 @@
 import gameManager from './gameManager.js';
+import sessionManager from './sessionManager.js';
 
 export default function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
-    const clientId = socket.handshake.auth.clientId || 'unknown';
+    const clientId = socket.handshake.auth.clientId;
     console.log(`Client connected - Socket: ${socket.id}, Client ID: ${clientId}`);
     
-    socket.on('create-game', ({ code, maxPlayers, rooms }) => {
-      console.log(`Creating game - Client: ${clientId}, Code: ${code}`);
-      try {
-        if (gameManager.getGame(code)) {
-          socket.emit('error', { message: 'Game already exists' });
-          return;
-        }
-        
-        const game = gameManager.createGame(code, maxPlayers, rooms);
-        socket.join(code);
-        io.emit('game-created', { code, maxPlayers, rooms });
-      } catch (error) {
-        console.error('Error creating game:', error);
-        socket.emit('error', { message: error.message });
-      }
-    });
+    // Restore session if exists
+    const existingSession = sessionManager.getSession(clientId);
+    if (existingSession) {
+      console.log(`Restoring session for client ${clientId}:`, existingSession);
+      socket.emit('session-restored', existingSession);
+    }
 
-    socket.on('verify-game', ({ code }, callback) => {
-      const exists = gameManager.verifyGame(code);
-      callback({ exists });
-    });
-
-    socket.on('join-game', ({ gameCode, player }) => {
-      console.log(`Join game attempt - Client: ${clientId}, Code: ${gameCode}`);
+    socket.on('remove-player', ({ gameCode, playerId, clientId: requestingClientId }) => {
+      console.log(`Remove player request - Client: ${requestingClientId}, Game: ${gameCode}, Player: ${playerId}`);
       try {
         const game = gameManager.getGame(gameCode);
         if (!game) {
-          socket.emit('join-game-error', { message: 'Game not found' });
+          console.log('Game not found:', gameCode);
           return;
         }
 
-        const updatedPlayers = gameManager.addPlayer(gameCode, player);
-        socket.join(gameCode);
-        
-        socket.emit('join-game-success', { 
-          player,
-          gameCode,
-          players: updatedPlayers
-        });
-
-        io.to(gameCode).emit('players-updated', updatedPlayers);
-      } catch (error) {
-        console.error('Error joining game:', error);
-        socket.emit('join-game-error', { message: error.message });
-      }
-    });
-
-    socket.on('remove-player', ({ gameCode, playerId }) => {
-      console.log(`Remove player request - Client: ${clientId}, Game: ${gameCode}, Player: ${playerId}`);
-      try {
         const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
         
-        // Notify all clients in the game about player removal
+        // Remove session for the removed player's client
+        const playerSession = Array.from(sessionManager.sessions.entries())
+          .find(([_, session]) => 
+            session.type === 'player' && 
+            session.player?.id === playerId && 
+            session.gameCode === gameCode
+          );
+        
+        if (playerSession) {
+          sessionManager.removeSession(playerSession[0]);
+        }
+
+        // Notify all clients in the game
         io.to(gameCode).emit('players-updated', updatedPlayers);
         io.to(gameCode).emit('player-removed', { playerId });
         
-        // If no players left, end the game
+        // End game if no players left
         if (updatedPlayers.length === 0) {
+          gameManager.endGame(gameCode);
           io.to(gameCode).emit('game-ended');
         }
       } catch (error) {
@@ -70,15 +50,6 @@ export default function setupSocketHandlers(io) {
       }
     });
 
-    socket.on('end-game', ({ code }) => {
-      console.log(`End game request - Client: ${clientId}, Game: ${code}`);
-      if (gameManager.endGame(code)) {
-        io.to(code).emit('game-ended');
-      }
-    });
-
-    socket.on('disconnect', () => {
-      console.log(`Client disconnected - Socket: ${socket.id}, Client ID: ${clientId}`);
-    });
+    // ... rest of the socket handlers ...
   });
 }

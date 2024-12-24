@@ -12,10 +12,11 @@ export default function PlayerManager() {
   const handleRemovePlayer = (player: Player) => {
     if (!gameCode) return;
     
-    console.log('Removing player:', player.id, 'from game:', gameCode);
+    console.log('Admin removing player:', { gameCode, playerId: player.id });
     socketService.socket.emit('remove-player', { 
       gameCode, 
-      playerId: player.id 
+      playerId: player.id,
+      clientId: socketService.getClientId()
     });
   };
 
