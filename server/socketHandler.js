@@ -7,20 +7,6 @@ export default function setupSocketHandlers(io) {
     let currentGame = null;
     let currentPlayer = null;
 
-    socket.on('verify-game', ({ code }, callback) => {
-      const game = gameManager.getGame(code);
-      callback({ exists: !!game });
-    });
-
-    socket.on('end-game', ({ code }) => {
-      console.log('Ending game:', code);
-      if (gameManager.endGame(code)) {
-        // Notify all clients in the game room
-        io.to(code).emit('game-ended');
-        socket.leave(code);
-      }
-    });
-
     socket.on('create-game', ({ code, maxPlayers, rooms }) => {
       console.log(`Creating game - Code: ${code}, Max Players: ${maxPlayers}, Rooms:`, rooms);
       try {
@@ -53,6 +39,7 @@ export default function setupSocketHandlers(io) {
           return;
         }
 
+        // Check maxPlayers here instead of in gameManager
         if (game.players.length >= game.maxPlayers) {
           socket.emit('join-game-error', { message: 'Game is full' });
           return;
@@ -71,6 +58,7 @@ export default function setupSocketHandlers(io) {
           players: updatedPlayers
         });
 
+        // Broadcast updated player list to all players in the game
         io.to(gameCode).emit('players-updated', updatedPlayers);
         
       } catch (error) {
@@ -85,8 +73,14 @@ export default function setupSocketHandlers(io) {
       io.to(gameCode).emit('players-updated', updatedPlayers);
       
       // Notify the removed player
-      io.to(gameCode).emit('player-removed', { playerId });
-      socket.leave(gameCode);
+      socket.to(gameCode).emit('player-removed', { playerId });
+    });
+
+    socket.on('end-game', ({ code }) => {
+      console.log('Ending game:', code);
+      if (gameManager.endGame(code)) {
+        io.to(code).emit('game-ended');
+      }
     });
 
     socket.on('disconnect', (reason) => {
@@ -94,7 +88,6 @@ export default function setupSocketHandlers(io) {
       if (currentGame && currentPlayer) {
         const updatedPlayers = gameManager.removePlayer(currentGame, currentPlayer.id);
         io.to(currentGame).emit('players-updated', updatedPlayers);
-        socket.leave(currentGame);
       }
     });
   });

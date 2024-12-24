@@ -21,7 +21,6 @@ class GameManager extends EventEmitter {
       
       this.activeGames.set(code, game);
       console.log('GameManager: Game created successfully:', game);
-      console.log('GameManager: Active games:', Array.from(this.activeGames.keys()));
       return game;
       
     } catch (error) {
@@ -31,21 +30,7 @@ class GameManager extends EventEmitter {
   }
 
   getGame(code) {
-    console.log('GameManager: Getting game:', code);
-    console.log('GameManager: Active games:', Array.from(this.activeGames.keys()));
     return this.activeGames.get(code);
-  }
-
-  endGame(code) {
-    console.log('GameManager: Ending game:', code);
-    if (this.activeGames.has(code)) {
-      const game = this.activeGames.get(code);
-      game.players = [];
-      game.phase = 'ended';
-      this.activeGames.delete(code);
-      return true;
-    }
-    return false;
   }
 
   addPlayer(gameCode, player) {
@@ -61,10 +46,7 @@ class GameManager extends EventEmitter {
         throw new Error('Player name already taken');
       }
 
-      if (game.players.length >= game.maxPlayers) {
-        throw new Error('Game is full');
-      }
-
+      // Remove the maxPlayers check since we want to allow up to maxPlayers
       game.players.push(player);
       this.activeGames.set(gameCode, game);
       
@@ -83,9 +65,15 @@ class GameManager extends EventEmitter {
     try {
       const game = this.getGame(gameCode);
       if (game) {
-        const initialCount = game.players.length;
         game.players = game.players.filter(p => p.id !== playerId);
-        console.log(`GameManager: Players in game: ${game.players.length} (was ${initialCount})`);
+        console.log(`GameManager: Players remaining in game: ${game.players.length}`);
+        
+        if (game.players.length === 0) {
+          console.log('GameManager: No players left, removing game');
+          this.activeGames.delete(gameCode);
+          return [];
+        }
+        
         this.activeGames.set(gameCode, game);
         return game.players;
       }
@@ -94,6 +82,15 @@ class GameManager extends EventEmitter {
       console.error('GameManager: Error removing player:', error);
       return [];
     }
+  }
+
+  endGame(code) {
+    console.log('GameManager: Ending game:', code);
+    if (this.activeGames.has(code)) {
+      this.activeGames.delete(code);
+      return true;
+    }
+    return false;
   }
 }
 
