@@ -8,18 +8,22 @@ import TaskCreator from '../components/admin/TaskCreator';
 import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
 import SabotageConfig from '../components/admin/SabotageConfig';
 import PlayerManager from '../components/admin/PlayerManager';
+import { useSocket } from '../hooks/useSocket';
 
 export default function AdminPanel() {
   const [error, setError] = useState('');
   const { 
     gameCode,
     setGameCode,
-    socketService
+    socketService,
+    updatePlayers
   } = useGameStore();
 
   const {
     rooms,
   } = useAdminStore();
+
+  const isConnected = useSocket();
 
   useEffect(() => {
     const handleGameCreated = ({ code }) => {
@@ -27,14 +31,24 @@ export default function AdminPanel() {
       localStorage.setItem('adminGameCode', code);
     };
 
+    const handlePlayersUpdate = (players) => {
+      updatePlayers(players);
+    };
+
     socketService.onGameCreated(handleGameCreated);
+    socketService.onPlayersUpdated(handlePlayersUpdate);
     
     return () => {
       socketService.offGameCreated();
+      socketService.offPlayersUpdated();
     };
-  }, [socketService, setGameCode]);
+  }, [socketService, setGameCode, updatePlayers]);
 
   const handleCreateGame = () => {
+    if (!isConnected) {
+      setError('Not connected to server');
+      return;
+    }
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     socketService.createGame(newGameCode, useGameStore.getState().maxPlayers, rooms);
   };
@@ -47,7 +61,8 @@ export default function AdminPanel() {
           {!gameCode ? (
             <button
               onClick={handleCreateGame}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700"
+              disabled={!isConnected}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
             >
               <PlayCircle className="w-5 h-5" />
               Create New Game
