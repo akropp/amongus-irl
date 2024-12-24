@@ -43,7 +43,6 @@ export const useGameStore = create<GameStore>()(
       setGameCode: (code) => {
         const normalizedCode = code.trim().toUpperCase();
         set({ gameCode: normalizedCode });
-        localStorage.setItem('currentGameCode', normalizedCode);
         
         if (normalizedCode) {
           get().socketService.createGame(
@@ -70,32 +69,18 @@ export const useGameStore = create<GameStore>()(
         set(state => ({
           players: state.players.filter(p => p.id !== playerId)
         }));
-        // If current player is removed, clear local storage
-        const currentPlayerId = localStorage.getItem('currentPlayerId');
-        if (currentPlayerId === playerId) {
-          localStorage.removeItem('currentGameCode');
-          localStorage.removeItem('currentPlayerId');
-          localStorage.removeItem('currentPlayer');
-        }
       },
         
       setMaxPlayers: (count) => set({ maxPlayers: count }),
       
       setPhase: (phase) => {
         set({ phase });
-        // Update local storage with game phase
         localStorage.setItem('gamePhase', phase);
       },
       
-      // ... rest of the store implementation remains the same ...
-
       reset: () => {
         const socketService = get().socketService;
         set({ ...initialState, socketService });
-        localStorage.removeItem('currentGameCode');
-        localStorage.removeItem('currentPlayerId');
-        localStorage.removeItem('currentPlayer');
-        localStorage.removeItem('gamePhase');
       }
     }),
     {

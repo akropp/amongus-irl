@@ -6,14 +6,21 @@ export function useSocket() {
   const socketService = useGameStore(state => state.socketService);
 
   useEffect(() => {
-    const handleConnect = () => setIsConnected(true);
-    const handleDisconnect = () => setIsConnected(false);
+    const handleConnect = () => {
+      console.log('Socket connected');
+      setIsConnected(true);
+    };
+    
+    const handleDisconnect = () => {
+      console.log('Socket disconnected');
+      setIsConnected(false);
+    };
 
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('disconnect', handleDisconnect);
 
     // Set initial connection state
-    setIsConnected(socketService.isConnected());
+    setIsConnected(socketService.socket.connected);
 
     return () => {
       socketService.socket.off('connect', handleConnect);
