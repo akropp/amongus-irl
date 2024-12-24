@@ -10,18 +10,21 @@ export default function JoinGame() {
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const navigate = useNavigate();
-  const { socketService, setGameCode: updateGameCode } = useGameStore();
+  const { socketService, setGameCode: updateGameCode, reset } = useGameStore();
+
+  // Clear game state on component mount
+  useEffect(() => {
+    reset();
+  }, [reset]);
 
   useEffect(() => {
     const checkConnection = () => {
       const isConnected = socketService.isConnected();
-      console.log('Socket connection status:', isConnected);
       
       if (!isConnected && connectionAttempts < 5) {
         setIsConnecting(true);
         setConnectionAttempts(prev => prev + 1);
         socketService.reconnect();
-        
         setTimeout(checkConnection, 2000);
       } else if (isConnected) {
         setIsConnecting(false);
@@ -35,21 +38,20 @@ export default function JoinGame() {
     checkConnection();
 
     socketService.onJoinGameSuccess(({ player, gameCode }) => {
-      console.log('Join game success:', { player, gameCode });
-      updateGameCode(gameCode); // Update the game code in the store
+      updateGameCode(gameCode);
       navigate(`/lobby/${player.id}`);
     });
 
     socketService.onJoinGameError((error) => {
-      console.error('Join game error:', error);
       setError(error.message);
+      reset(); // Clear game state on error
     });
 
     return () => {
       setIsConnecting(false);
       setConnectionAttempts(0);
     };
-  }, [socketService, connectionAttempts, navigate, updateGameCode]);
+  }, [socketService, connectionAttempts, navigate, updateGameCode, reset]);
 
   const handleJoinGame = () => {
     setError('');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, PlayCircle } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
@@ -13,6 +13,7 @@ export default function AdminPanel() {
     players,
     setGameCode,
     removePlayer,
+    reset
   } = useGameStore();
 
   const {
@@ -20,9 +21,13 @@ export default function AdminPanel() {
     rooms,
   } = useAdminStore();
 
+  // Clear game state when mounting admin panel
+  useEffect(() => {
+    reset();
+  }, [reset]);
+
   const handleCreateGame = () => {
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    console.log('Generated game code:', newGameCode);
     setGameCode(newGameCode);
   };
 
