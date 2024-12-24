@@ -6,9 +6,9 @@ export default class SocketService {
   private clientId: string;
 
   constructor() {
-    // Get or generate client ID
-    this.clientId = localStorage.getItem('socketClientId') || this.generateClientId();
-    localStorage.setItem('socketClientId', this.clientId);
+    // Get or generate client ID using sessionStorage instead of localStorage
+    this.clientId = sessionStorage.getItem('socketClientId') || this.generateClientId();
+    sessionStorage.setItem('socketClientId', this.clientId);
 
     // Initialize socket with client ID
     this.socket = io(SERVER_URL, {
@@ -20,7 +20,7 @@ export default class SocketService {
   }
 
   private generateClientId(): string {
-    return 'client_' + Math.random().toString(36).substring(2, 15);
+    return 'client_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
   }
 
   private setupLogging() {
