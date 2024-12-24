@@ -3,8 +3,17 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    exclude: ['lucide-react'],
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          icons: ['lucide-react']
+        }
+      }
+    }
   },
   server: {
     proxy: {
@@ -14,4 +23,10 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react']
+  },
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
+  }
 });

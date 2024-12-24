@@ -5,7 +5,7 @@ import { Task, Sabotage } from '../types/game';
 
 interface AdminState {
   haToken: string;
-  isConnected: boolean;
+  connected: boolean; // Changed from isConnected to connected
   rooms: string[];
   tasks: Task[];
   sabotages: Sabotage[];
@@ -19,13 +19,14 @@ interface AdminState {
   addSabotage: (sabotage: Sabotage) => void;
   removeSabotage: (sabotageId: string) => void;
   updateSabotageStatus: (sabotageId: string, active: boolean) => void;
+  isConnected: () => boolean; // Added getter method
 }
 
 export const useAdminStore = create<AdminState>()(
   persist(
     (set, get) => ({
       haToken: '',
-      isConnected: false,
+      connected: false,
       rooms: [],
       tasks: [],
       sabotages: [],
@@ -38,14 +39,16 @@ export const useAdminStore = create<AdminState>()(
           const service = new HomeAssistantService({ token });
           set({ 
             haService: service,
-            isConnected: true,
+            connected: true,
             haToken: token
           });
         } catch (error) {
           console.error('Failed to initialize Home Assistant:', error);
-          set({ isConnected: false });
+          set({ connected: false });
         }
       },
+
+      isConnected: () => get().connected,
 
       addRoom: (room: string) => 
         set(state => ({

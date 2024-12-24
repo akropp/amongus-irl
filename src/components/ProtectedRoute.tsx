@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { gameCode, players } = useGameStore();
-  const { isConnected: isAdmin } = useAdminStore();
+  const { connected } = useAdminStore();
   const path = window.location.pathname;
 
   // Allow admin access without game code check
