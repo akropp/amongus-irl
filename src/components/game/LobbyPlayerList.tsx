@@ -8,11 +8,13 @@ interface LobbyPlayerListProps {
 }
 
 export function LobbyPlayerList({ currentPlayerId }: LobbyPlayerListProps) {
-  const { players } = useGameStore();
+  const { players, gameCode } = useGameStore();
+  const navigate = useNavigate();
 
-  useGameEvents((playerId) => {
-    if (playerId === currentPlayerId) {
-      window.location.href = '/';
+  useGameEvents((removedPlayerId) => {
+    if (removedPlayerId === currentPlayerId) {
+      clearGameSession();
+      navigate('/', { replace: true });
     }
   });
 
