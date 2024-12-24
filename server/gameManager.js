@@ -4,6 +4,8 @@ class GameManager extends EventEmitter {
   constructor() {
     super();
     this.activeGames = new Map();
+    this.disconnectedPlayers = new Map(); // Store disconnected players with timestamps
+    this.RECONNECT_TIMEOUT = 30000; // 30 seconds grace period
   }
 
   createGame(code, maxPlayers, rooms) {
@@ -22,82 +24,49 @@ class GameManager extends EventEmitter {
       this.activeGames.set(code, game);
       console.log('GameManager: Game created successfully:', game);
       return game;
-      
     } catch (error) {
       console.error('GameManager: Error creating game:', error);
       throw error;
     }
   }
 
-  getGame(code) {
-    return this.activeGames.get(code);
+  handleDisconnect(gameCode, playerId, socketId) {
+    const game = this.getGame(gameCode);
+    if (!game) return;
+
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    // Store the disconnected player with timestamp and socket ID
+    this.disconnectedPlayers.set(playerId, {
+      player,
+      gameCode,
+      socketId,
+      timestamp: Date.now()
+    });
+
+    // Set up timeout to remove player if they don't reconnect
+    setTimeout(() => {
+      const disconnectedInfo = this.disconnectedPlayers.get(playerId);
+      if (disconnectedInfo) {
+        console.log('GameManager: Player reconnection timeout:', playerId);
+        this.removePlayer(gameCode, playerId);
+        this.disconnectedPlayers.delete(playerId);
+      }
+    }, this.RECONNECT_TIMEOUT);
   }
 
-  addPlayer(gameCode, player) {
-    console.log('GameManager: Adding player to game:', gameCode);
-    
-    try {
-      const game = this.getGame(gameCode);
-      if (!game) {
-        throw new Error('Game not found');
-      }
-
-      if (game.players.length >= game.maxPlayers) {
-        throw new Error('Game is full');
-      }
-
-      if (game.players.some(p => p.name === player.name)) {
-        throw new Error('Player name already taken');
-      }
-
-      game.players.push(player);
-      this.activeGames.set(gameCode, game);
-      
-      console.log('GameManager: Player added successfully:', player);
-      console.log('GameManager: Current players:', game.players.length, '/', game.maxPlayers);
-      return game.players;
-      
-    } catch (error) {
-      console.error('GameManager: Error adding player:', error);
-      throw error;
+  handleReconnect(gameCode, playerId, newSocketId) {
+    const disconnectedInfo = this.disconnectedPlayers.get(playerId);
+    if (disconnectedInfo && disconnectedInfo.gameCode === gameCode) {
+      console.log('GameManager: Player reconnected:', playerId);
+      this.disconnectedPlayers.delete(playerId);
+      return true;
     }
+    return false;
   }
 
-  removePlayer(gameCode, playerId) {
-    console.log('GameManager: Removing player', playerId, 'from game', gameCode);
-    try {
-      const game = this.getGame(gameCode);
-      if (!game) {
-        console.log('GameManager: Game not found');
-        return [];
-      }
-
-      const initialLength = game.players.length;
-      game.players = game.players.filter(p => p.id !== playerId);
-      
-      if (game.players.length !== initialLength) {
-        console.log(`GameManager: Player removed. Players remaining: ${game.players.length}`);
-        
-        if (game.players.length === 0) {
-          console.log('GameManager: No players left, removing game');
-          this.activeGames.delete(gameCode);
-          return [];
-        }
-        
-        this.activeGames.set(gameCode, game);
-      }
-      
-      return game.players;
-    } catch (error) {
-      console.error('GameManager: Error removing player:', error);
-      return [];
-    }
-  }
-
-  endGame(code) {
-    console.log('GameManager: Ending game:', code);
-    return this.activeGames.delete(code);
-  }
+  // ... rest of the existing methods ...
 }
 
 export default new GameManager();

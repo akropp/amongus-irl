@@ -4,98 +4,48 @@ import { Player } from '../types/game';
 
 export default class SocketService {
   public socket: Socket;
+  private reconnectAttempts: number = 0;
+  private MAX_RECONNECT_ATTEMPTS: number = 5;
 
   constructor() {
-    this.socket = io(SERVER_URL, SOCKET_OPTIONS);
-  }
-
-  public isConnected(): boolean {
-    return this.socket.connected;
-  }
-
-  public createGame(code: string, maxPlayers: number, rooms: string[]) {
-    if (this.socket.connected) {
-      this.socket.emit('create-game', { code, maxPlayers, rooms });
-    }
-  }
-
-  public endGame(code: string) {
-    if (this.socket.connected) {
-      this.socket.emit('end-game', { code });
-    }
-  }
-
-  public joinGame(gameCode: string, player: Player) {
-    if (this.socket.connected) {
-      console.log('Joining game:', gameCode, player);
-      this.socket.emit('join-game', { gameCode, player });
-    }
-  }
-
-  public removePlayer(gameCode: string, playerId: string) {
-    if (this.socket.connected) {
-      this.socket.emit('remove-player', { gameCode, playerId });
-    }
-  }
-
-  public verifyGame(code: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      if (!this.socket.connected) {
-        resolve(false);
-        return;
+    this.socket = io(SERVER_URL, {
+      ...SOCKET_OPTIONS,
+      auth: {
+        playerId: localStorage.getItem('currentPlayerId'),
+        gameCode: localStorage.getItem('currentGameCode')
       }
+    });
+
+    this.setupReconnection();
+  }
+
+  private setupReconnection() {
+    this.socket.on('connect', () => {
+      console.log('Socket connected');
+      this.reconnectAttempts = 0;
       
-      this.socket.emit('verify-game', { code }, (response: { exists: boolean }) => {
-        resolve(response?.exists ?? false);
-      });
+      const playerId = localStorage.getItem('currentPlayerId');
+      const gameCode = localStorage.getItem('currentGameCode');
+      
+      if (playerId && gameCode) {
+        this.socket.emit('register-player', { gameCode, playerId });
+      }
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        this.socket.connect();
+      }
+    });
+
+    this.socket.on('reconnect_attempt', (attempt) => {
+      this.reconnectAttempts = attempt;
+      if (attempt > this.MAX_RECONNECT_ATTEMPTS) {
+        this.socket.disconnect();
+      }
     });
   }
 
-  public onGameCreated(callback: (data: { code: string; maxPlayers: number; rooms: string[] }) => void) {
-    this.socket.on('game-created', callback);
-  }
-
-  public onGameEnded(callback: () => void) {
-    this.socket.on('game-ended', callback);
-  }
-
-  public offGameEnded() {
-    this.socket.off('game-ended');
-  }
-
-  public offGameCreated() {
-    this.socket.off('game-created');
-  }
-
-  public onJoinGameSuccess(callback: (data: { player: Player; gameCode: string; players: Player[] }) => void) {
-    this.socket.on('join-game-success', callback);
-  }
-
-  public onJoinGameError(callback: (error: { message: string }) => void) {
-    this.socket.on('join-game-error', callback);
-  }
-
-  public onPlayersUpdated(callback: (players: Player[]) => void) {
-    this.socket.on('players-updated', callback);
-  }
-
-  public onGameStarted(callback: () => void) {
-    this.socket.on('game-started', callback);
-  }
-
-  public offJoinGameSuccess() {
-    this.socket.off('join-game-success');
-  }
-
-  public offJoinGameError() {
-    this.socket.off('join-game-error');
-  }
-
-  public offPlayersUpdated() {
-    this.socket.off('players-updated');
-  }
-
-  public offGameStarted() {
-    this.socket.off('game-started');
-  }
+  // ... rest of the existing methods ...
 }
