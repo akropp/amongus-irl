@@ -7,8 +7,6 @@ export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
-  const [isConnecting, setIsConnecting] = useState(true);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const navigate = useNavigate();
   const { socketService, setGameCode: updateGameCode, addPlayer, reset } = useGameStore();
 
@@ -17,25 +15,6 @@ export default function JoinGame() {
   }, [reset]);
 
   useEffect(() => {
-    const checkConnection = () => {
-      const isConnected = socketService.isConnected();
-      
-      if (!isConnected && connectionAttempts < 5) {
-        setIsConnecting(true);
-        setConnectionAttempts(prev => prev + 1);
-        socketService.reconnect();
-        setTimeout(checkConnection, 2000);
-      } else if (isConnected) {
-        setIsConnecting(false);
-        setConnectionAttempts(0);
-      } else {
-        setError('Unable to connect to server. Please refresh the page.');
-        setIsConnecting(false);
-      }
-    };
-
-    checkConnection();
-
     const handleJoinSuccess = ({ player, gameCode }) => {
       console.log('Join success:', { player, gameCode });
       updateGameCode(gameCode);
@@ -49,14 +28,29 @@ export default function JoinGame() {
       reset();
     };
 
+    const handleDisconnect = () => {
+      setError('Disconnected from server. Please refresh the page.');
+      reset();
+    };
+
+    const handleRemoved = () => {
+      setError('You have been removed from the game.');
+      reset();
+      navigate('/');
+    };
+
     socketService.onJoinGameSuccess(handleJoinSuccess);
     socketService.onJoinGameError(handleJoinError);
+    socketService.onDisconnect(handleDisconnect);
+    socketService.onRemoved(handleRemoved);
 
     return () => {
       socketService.offJoinGameSuccess();
       socketService.offJoinGameError();
+      socketService.offDisconnect();
+      socketService.offRemoved();
     };
-  }, [socketService, connectionAttempts, navigate, updateGameCode, addPlayer, reset]);
+  }, [socketService, navigate, updateGameCode, addPlayer, reset]);
 
   const handleJoinGame = () => {
     setError('');
@@ -100,11 +94,7 @@ export default function JoinGame() {
         </div>
         
         <div className="mt-8 space-y-6">
-          {isConnecting ? (
-            <div className="bg-blue-900/50 text-blue-200 p-3 rounded-md text-sm">
-              Connecting to server... (Attempt {connectionAttempts}/5)
-            </div>
-          ) : socketService.isConnected() ? (
+          {socketService.isConnected() ? (
             <div className="bg-green-900/50 text-green-200 p-3 rounded-md text-sm">
               Connected to server
             </div>
@@ -156,10 +146,10 @@ export default function JoinGame() {
 
           <button
             onClick={handleJoinGame}
-            disabled={!gameCode || !playerName || isConnecting || !socketService.isConnected()}
+            disabled={!gameCode || !playerName || !socketService.isConnected()}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isConnecting ? 'Connecting...' : 'Join Game'}
+            Join Game
           </button>
         </div>
       </div>

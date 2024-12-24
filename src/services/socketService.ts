@@ -7,6 +7,8 @@ export default class SocketService {
   private joinGameSuccessCallback: ((data: { player: Player; gameCode: string }) => void) | null = null;
   private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
   private playersUpdateCallback: ((players: Player[]) => void) | null = null;
+  private disconnectCallback: (() => void) | null = null;
+  private removedCallback: (() => void) | null = null;
 
   constructor() {
     this.socket = io(SERVER_URL, SOCKET_OPTIONS);
@@ -15,23 +17,32 @@ export default class SocketService {
 
   private setupEventListeners() {
     this.socket.on('join-game-success', (data) => {
-      console.log('Socket: join-game-success received', data);
       if (this.joinGameSuccessCallback) {
         this.joinGameSuccessCallback(data);
       }
     });
 
     this.socket.on('join-game-error', (error) => {
-      console.log('Socket: join-game-error received', error);
       if (this.joinGameErrorCallback) {
         this.joinGameErrorCallback(error);
       }
     });
 
     this.socket.on('players-updated', (players) => {
-      console.log('Socket: players-updated received', players);
       if (this.playersUpdateCallback) {
         this.playersUpdateCallback(players);
+      }
+    });
+
+    this.socket.on('disconnect', () => {
+      if (this.disconnectCallback) {
+        this.disconnectCallback();
+      }
+    });
+
+    this.socket.on('player-removed', () => {
+      if (this.removedCallback) {
+        this.removedCallback();
       }
     });
   }
@@ -47,17 +58,18 @@ export default class SocketService {
   }
 
   public createGame(code: string, maxPlayers: number, rooms: string[]): void {
-    console.log('Socket: creating game', { code, maxPlayers, rooms });
     this.socket.emit('create-game', { code, maxPlayers, rooms });
   }
 
   public joinGame(gameCode: string, player: Player): void {
-    console.log('Socket: joining game', { gameCode, player });
     this.socket.emit('join-game', { gameCode, player });
   }
 
+  public removePlayer(gameCode: string, playerId: string): void {
+    this.socket.emit('remove-player', { gameCode, playerId });
+  }
+
   public startGame(gameCode: string, players: Player[]): void {
-    console.log('Socket: starting game', { gameCode, players });
     this.socket.emit('start-game', { gameCode, players });
   }
 
@@ -73,6 +85,14 @@ export default class SocketService {
     this.playersUpdateCallback = callback;
   }
 
+  public onDisconnect(callback: () => void): void {
+    this.disconnectCallback = callback;
+  }
+
+  public onRemoved(callback: () => void): void {
+    this.removedCallback = callback;
+  }
+
   public offJoinGameSuccess(): void {
     this.joinGameSuccessCallback = null;
   }
@@ -83,5 +103,13 @@ export default class SocketService {
 
   public offPlayersUpdated(): void {
     this.playersUpdateCallback = null;
+  }
+
+  public offDisconnect(): void {
+    this.disconnectCallback = null;
+  }
+
+  public offRemoved(): void {
+    this.removedCallback = null;
   }
 }

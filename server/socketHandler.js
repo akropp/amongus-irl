@@ -54,6 +54,19 @@ export default function setupSocketHandlers(io) {
       }
     });
 
+    socket.on('remove-player', ({ gameCode, playerId }) => {
+      console.log(`Removing player ${playerId} from game ${gameCode}`);
+      const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
+      io.to(gameCode).emit('players-updated', updatedPlayers);
+      
+      // Notify the removed player
+      const playerSocket = Array.from(io.sockets.sockets.values())
+        .find(s => s.currentPlayer?.id === playerId);
+      if (playerSocket) {
+        playerSocket.emit('player-removed');
+      }
+    });
+
     socket.on('start-game', ({ gameCode }) => {
       console.log('Starting game:', gameCode);
       try {
