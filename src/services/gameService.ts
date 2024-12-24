@@ -1,9 +1,11 @@
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import type { Game, Player } from '../types/game';
 
 export const gameService = {
   async createGame(code: string, maxPlayers: number): Promise<Game | null> {
-    const { data, error } = await supabase
+    if (!isSupabaseEnabled) return null;
+
+    const { data, error } = await supabase!
       .from('games')
       .insert([{ code, max_players: maxPlayers }])
       .select()
@@ -24,7 +26,9 @@ export const gameService = {
   },
 
   async getGame(code: string): Promise<Game | null> {
-    const { data: game, error: gameError } = await supabase
+    if (!isSupabaseEnabled) return null;
+
+    const { data: game, error: gameError } = await supabase!
       .from('games')
       .select('*')
       .eq('code', code)
@@ -32,12 +36,12 @@ export const gameService = {
 
     if (gameError) return null;
 
-    const { data: players } = await supabase
+    const { data: players } = await supabase!
       .from('game_players')
       .select('*')
       .eq('game_code', code);
 
-    const { data: rooms } = await supabase
+    const { data: rooms } = await supabase!
       .from('game_rooms')
       .select('*')
       .eq('game_code', code);
@@ -52,7 +56,9 @@ export const gameService = {
   },
 
   async addPlayer(gameCode: string, player: Player): Promise<Player | null> {
-    const { data, error } = await supabase
+    if (!isSupabaseEnabled) return null;
+
+    const { data, error } = await supabase!
       .from('game_players')
       .insert([{
         id: player.id,
@@ -79,7 +85,9 @@ export const gameService = {
   },
 
   async removePlayer(gameCode: string, playerId: string): Promise<void> {
-    await supabase
+    if (!isSupabaseEnabled) return;
+
+    await supabase!
       .from('game_players')
       .delete()
       .eq('game_code', gameCode)
@@ -87,7 +95,9 @@ export const gameService = {
   },
 
   async updateGamePhase(code: string, phase: string): Promise<void> {
-    await supabase
+    if (!isSupabaseEnabled) return;
+
+    await supabase!
       .from('games')
       .update({ phase })
       .eq('code', code);
