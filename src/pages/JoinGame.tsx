@@ -14,13 +14,23 @@ export default function JoinGame() {
 
   useEffect(() => {
     reset();
+    localStorage.removeItem('currentGameCode');
+    localStorage.removeItem('currentPlayerId');
+    localStorage.removeItem('currentPlayer');
   }, [reset]);
 
   useEffect(() => {
-    const handleJoinSuccess = ({ player, gameCode }) => {
-      console.log('Join success:', { player, gameCode });
+    const handleJoinSuccess = ({ player, gameCode, players }) => {
+      console.log('Join success:', { player, gameCode, players });
       updateGameCode(gameCode);
-      addPlayer(player);
+      // Update all players
+      players.forEach(p => addPlayer(p));
+      
+      // Save current player data
+      localStorage.setItem('currentGameCode', gameCode);
+      localStorage.setItem('currentPlayerId', player.id);
+      localStorage.setItem('currentPlayer', JSON.stringify(player));
+      
       navigate(`/lobby/${player.id}`);
     };
 
@@ -32,7 +42,6 @@ export default function JoinGame() {
 
     const handleDisconnect = () => {
       setError('Disconnected from server. Please refresh the page.');
-      reset();
     };
 
     const handleRemoved = () => {

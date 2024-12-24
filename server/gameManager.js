@@ -1,43 +1,39 @@
-import { EventEmitter } from 'events';
-import { gameQueries } from './db.js';
+import { gameService } from '../src/services/gameService.js';
 
-class GameManager extends EventEmitter {
+class GameManager {
   constructor() {
-    super();
-    this.activeGames = new Map(); // Track active games in memory
+    this.activeGames = new Map();
   }
 
-  createGame(code, maxPlayers, rooms) {
-    console.log('GameManager: Creating game with code:', code);
-    
+  async createGame(code, maxPlayers, rooms) {
     try {
-      const game = {
-        code,
-        maxPlayers,
-        rooms,
-        players: [],
-        phase: 'lobby',
-        createdAt: new Date()
-      };
-      
-      this.activeGames.set(code, game);
-      console.log('GameManager: Game created successfully:', game);
-      return game;
-      
+      const game = await gameService.createGame(code, maxPlayers);
+      if (game) {
+        this.activeGames.set(code, game);
+        return game;
+      }
+      throw new Error('Failed to create game');
     } catch (error) {
       console.error('GameManager: Error creating game:', error);
       throw error;
     }
   }
 
-  addPlayer(gameCode, player) {
-    console.log('GameManager: Adding player to game:', gameCode);
-    
-    try {
-      const game = this.getGame(gameCode);
-      if (!game) {
-        throw new Error('Game not found');
+  async getGame(code) {
+    let game = this.activeGames.get(code);
+    if (!game) {
+      game = await gameService.getGame(code);
+      if (game) {
+        this.activeGames.set(code, game);
       }
+    }
+    return game;
+  }
+
+  async addPlayer(gameCode, player) {
+    try {
+      const game = await this.getGame(gameCode);
+      if (!game) throw new Error('Game not found');
 
       if (game.players.some(p => p.name === player.name)) {
         throw new Error('Player name already taken');
@@ -47,23 +43,23 @@ class GameManager extends EventEmitter {
         throw new Error('Game is full');
       }
 
-      game.players.push(player);
+      const newPlayer = await gameService.addPlayer(gameCode, player);
+      if (!newPlayer) throw new Error('Failed to add player');
+
+      game.players.push(newPlayer);
       this.activeGames.set(gameCode, game);
-      
-      console.log('GameManager: Player added successfully:', player);
       return game.players;
-      
     } catch (error) {
       console.error('GameManager: Error adding player:', error);
       throw error;
     }
   }
 
-  removePlayer(gameCode, playerId) {
-    console.log('GameManager: Removing player', playerId);
+  async removePlayer(gameCode, playerId) {
     try {
-      const game = this.getGame(gameCode);
+      const game = await this.getGame(gameCode);
       if (game) {
+        await gameService.removePlayer(gameCode, playerId);
         game.players = game.players.filter(p => p.id !== playerId);
         this.activeGames.set(gameCode, game);
         return game.players;
@@ -75,15 +71,16 @@ class GameManager extends EventEmitter {
     }
   }
 
-  getGame(code) {
-    return this.activeGames.get(code) || null;
-  }
-
-  updateGamePhase(gameCode, phase) {
-    const game = this.getGame(gameCode);
-    if (game) {
-      game.phase = phase;
-      this.activeGames.set(gameCode, game);
+  async updateGamePhase(gameCode, phase) {
+    try {
+      await gameService.updateGamePhase(gameCode, phase);
+      const game = await this.getGame(gameCode);
+      if (game) {
+        game.phase = phase;
+        this.activeGames.set(gameCode, game);
+      }
+    } catch (error) {
+      console.error('GameManager: Error updating game phase:', error);
     }
   }
 }

@@ -5,7 +5,7 @@ import { useGameStore } from '../store/gameStore';
 export function usePageRefresh() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { gameCode, players } = useGameStore();
+  const { gameCode, players, socketService } = useGameStore();
 
   useEffect(() => {
     // Check if we're on an admin page
@@ -15,19 +15,25 @@ export function usePageRefresh() {
 
     // For player pages, check if we have valid game state
     const savedGameCode = localStorage.getItem('currentGameCode');
+    const savedPlayerId = localStorage.getItem('currentPlayerId');
     
     if (!gameCode && savedGameCode) {
       useGameStore.getState().setGameCode(savedGameCode);
-    } else if (!gameCode && !savedGameCode) {
-      navigate('/'); // Redirect to join page if no game code exists
-      return;
     }
 
-    // If we're on a player page but have no players, redirect to join
+    // If we're on a player page but have no players, try to reconnect
     if (location.pathname.includes('/lobby/') || location.pathname.includes('/game/')) {
-      if (players.length === 0) {
+      if (players.length === 0 && savedGameCode && savedPlayerId) {
+        const savedPlayerData = localStorage.getItem('currentPlayer');
+        if (savedPlayerData) {
+          const player = JSON.parse(savedPlayerData);
+          socketService.joinGame(savedGameCode, player);
+        } else {
+          navigate('/');
+        }
+      } else if (!savedPlayerId) {
         navigate('/');
       }
     }
-  }, [gameCode, location.pathname, navigate, players]);
+  }, [gameCode, location.pathname, navigate, players, socketService]);
 }
