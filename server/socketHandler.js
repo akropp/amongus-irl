@@ -38,14 +38,24 @@ export default function setupSocketHandlers(io) {
           return;
         }
 
+        // Add player to the game
         const updatedPlayers = gameManager.addPlayer(gameCode, player);
         console.log(`Player ${player.name} joined game ${gameCode}. Total players:`, updatedPlayers.length);
         
         currentGame = gameCode;
         currentPlayer = player;
         
+        // Join the socket room for this game
         socket.join(gameCode);
-        socket.emit('join-game-success', { player, gameCode });
+
+        // Send success to the joining player
+        socket.emit('join-game-success', { 
+          player,
+          gameCode,
+          players: updatedPlayers // Send all players to the joining player
+        });
+
+        // Broadcast updated player list to all players in the game
         io.to(gameCode).emit('players-updated', updatedPlayers);
         
       } catch (error) {

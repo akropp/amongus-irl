@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Users, PlayCircle } from 'lucide-react';
+import { Users, PlayCircle, Hash } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { usePageRefresh } from '../hooks/usePageRefresh';
 
@@ -36,6 +36,14 @@ export default function Lobby() {
           <h1 className="text-3xl font-bold text-center mb-8 text-purple-400">
             Game Lobby
           </h1>
+
+          {/* Game Code Display */}
+          <div className="mb-8 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-900/50 rounded-lg border border-purple-500">
+              <Hash className="w-5 h-5 text-purple-400" />
+              <span className="font-mono text-xl font-bold text-purple-400">{gameCode}</span>
+            </div>
+          </div>
 
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">

@@ -54,7 +54,11 @@ export const useGameStore = create<GameStore>()(
       },
       
       addPlayer: (player) => {
-        set(state => ({ players: [...state.players, player] }));
+        set(state => ({
+          players: state.players.find(p => p.id === player.id)
+            ? state.players
+            : [...state.players, player]
+        }));
       },
       
       updatePlayers: (players) => {
