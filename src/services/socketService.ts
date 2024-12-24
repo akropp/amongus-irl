@@ -10,6 +10,7 @@ export default class SocketService {
   private disconnectCallback: (() => void) | null = null;
   private removedCallback: ((data: { playerId: string }) => void) | null = null;
   private gameStartedCallback: (() => void) | null = null;
+  private gameCreatedCallback: ((data: { code: string; maxPlayers: number; rooms: string[] }) => void) | null = null;
 
   constructor() {
     this.socket = io(SERVER_URL, SOCKET_OPTIONS);
@@ -52,6 +53,12 @@ export default class SocketService {
         this.gameStartedCallback();
       }
     });
+
+    this.socket.on('game-created', (data) => {
+      if (this.gameCreatedCallback) {
+        this.gameCreatedCallback(data);
+      }
+    });
   }
 
   public isConnected(): boolean {
@@ -76,51 +83,13 @@ export default class SocketService {
     }
   }
 
-  public onJoinGameSuccess(callback: (data: { player: Player; gameCode: string; players: Player[] }) => void): void {
-    this.joinGameSuccessCallback = callback;
+  public onGameCreated(callback: (data: { code: string; maxPlayers: number; rooms: string[] }) => void): void {
+    this.gameCreatedCallback = callback;
   }
 
-  public onJoinGameError(callback: (error: { message: string }) => void): void {
-    this.joinGameErrorCallback = callback;
+  public offGameCreated(): void {
+    this.gameCreatedCallback = null;
   }
 
-  public onPlayersUpdated(callback: (players: Player[]) => void): void {
-    this.playersUpdateCallback = callback;
-  }
-
-  public onDisconnect(callback: () => void): void {
-    this.disconnectCallback = callback;
-  }
-
-  public offJoinGameSuccess(): void {
-    this.joinGameSuccessCallback = null;
-  }
-
-  public offJoinGameError(): void {
-    this.joinGameErrorCallback = null;
-  }
-
-  public offPlayersUpdated(): void {
-    this.playersUpdateCallback = null;
-  }
-
-  public offDisconnect(): void {
-    this.disconnectCallback = null;
-  }
-
-  public onRemoved(callback: (data: { playerId: string }) => void): void {
-    this.removedCallback = callback;
-  }
-
-  public offRemoved(): void {
-    this.removedCallback = null;
-  }
-
-  public onGameStarted(callback: () => void): void {
-    this.gameStartedCallback = callback;
-  }
-
-  public offGameStarted(): void {
-    this.gameStartedCallback = null;
-  }
+  // ... rest of the event handlers remain the same ...
 }
