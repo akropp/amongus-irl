@@ -43,7 +43,8 @@ const useGameStore = create<GameStore>()(
         const normalizedCode = code.trim().toUpperCase();
         set({ gameCode: normalizedCode });
         
-        if (normalizedCode) {
+        // Only create a new game if we're in the admin panel
+        if (normalizedCode && window.location.pathname === '/admin') {
           get().socketService.createGame(
             normalizedCode,
             get().maxPlayers,
@@ -54,8 +55,9 @@ const useGameStore = create<GameStore>()(
       
       addPlayer: (player) => {
         console.log('Adding player:', player);
-        get().socketService.joinGame(get().gameCode, player);
-        set(state => ({ players: [...state.players, player] }));
+        set(state => ({ 
+          players: [...state.players.filter(p => p.id !== player.id), player]
+        }));
       },
         
       removePlayer: (playerId) =>
@@ -145,7 +147,10 @@ const useGameStore = create<GameStore>()(
         }
       },
 
-      reset: () => set(initialState)
+      reset: () => {
+        const socketService = get().socketService;
+        set({ ...initialState, socketService });
+      }
     }),
     {
       name: 'game-storage',

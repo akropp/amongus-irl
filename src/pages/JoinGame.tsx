@@ -10,17 +10,17 @@ export default function JoinGame() {
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const navigate = useNavigate();
-  const store = useGameStore();
+  const { socketService, setGameCode: updateGameCode } = useGameStore();
 
   useEffect(() => {
     const checkConnection = () => {
-      const isConnected = store.socketService.isConnected();
+      const isConnected = socketService.isConnected();
       console.log('Socket connection status:', isConnected);
       
       if (!isConnected && connectionAttempts < 5) {
         setIsConnecting(true);
         setConnectionAttempts(prev => prev + 1);
-        store.socketService.reconnect();
+        socketService.reconnect();
         
         setTimeout(checkConnection, 2000);
       } else if (isConnected) {
@@ -34,12 +34,13 @@ export default function JoinGame() {
 
     checkConnection();
 
-    store.socketService.onJoinGameSuccess(({ player }) => {
-      console.log('Join game success:', player);
+    socketService.onJoinGameSuccess(({ player, gameCode }) => {
+      console.log('Join game success:', { player, gameCode });
+      updateGameCode(gameCode); // Update the game code in the store
       navigate(`/lobby/${player.id}`);
     });
 
-    store.socketService.onJoinGameError((error) => {
+    socketService.onJoinGameError((error) => {
       console.error('Join game error:', error);
       setError(error.message);
     });
@@ -48,12 +49,12 @@ export default function JoinGame() {
       setIsConnecting(false);
       setConnectionAttempts(0);
     };
-  }, [store.socketService, connectionAttempts, navigate]);
+  }, [socketService, connectionAttempts, navigate, updateGameCode]);
 
   const handleJoinGame = () => {
     setError('');
     
-    if (!store.socketService.isConnected()) {
+    if (!socketService.isConnected()) {
       setError('Not connected to server. Please try again.');
       return;
     }
@@ -70,11 +71,6 @@ export default function JoinGame() {
       return;
     }
 
-    console.log('Join game attempt:', {
-      inputCode: normalizedInputCode,
-      playerName: playerName.trim()
-    });
-
     const newPlayer = {
       id: Math.random().toString(36).substring(2),
       name: playerName.trim(),
@@ -83,7 +79,7 @@ export default function JoinGame() {
       tasks: []
     };
     
-    store.socketService.joinGame(normalizedInputCode, newPlayer);
+    socketService.joinGame(normalizedInputCode, newPlayer);
   };
 
   return (
@@ -101,7 +97,7 @@ export default function JoinGame() {
             <div className="bg-blue-900/50 text-blue-200 p-3 rounded-md text-sm">
               Connecting to server... (Attempt {connectionAttempts}/5)
             </div>
-          ) : store.socketService.isConnected() ? (
+          ) : socketService.isConnected() ? (
             <div className="bg-green-900/50 text-green-200 p-3 rounded-md text-sm">
               Connected to server
             </div>
@@ -153,7 +149,7 @@ export default function JoinGame() {
 
           <button
             onClick={handleJoinGame}
-            disabled={!gameCode || !playerName || isConnecting || !store.socketService.isConnected()}
+            disabled={!gameCode || !playerName || isConnecting || !socketService.isConnected()}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isConnecting ? 'Connecting...' : 'Join Game'}
