@@ -12,7 +12,6 @@ export default function JoinGame() {
   const navigate = useNavigate();
   const { socketService, setGameCode: updateGameCode, addPlayer, reset } = useGameStore();
 
-  // Clear game state on component mount
   useEffect(() => {
     reset();
   }, [reset]);
@@ -54,8 +53,8 @@ export default function JoinGame() {
     socketService.onJoinGameError(handleJoinError);
 
     return () => {
-      socketService.offJoinGameSuccess(handleJoinSuccess);
-      socketService.offJoinGameError(handleJoinError);
+      socketService.offJoinGameSuccess();
+      socketService.offJoinGameError();
     };
   }, [socketService, connectionAttempts, navigate, updateGameCode, addPlayer, reset]);
 

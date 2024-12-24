@@ -5,9 +5,10 @@ import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
 import RoomManager from '../components/admin/RoomManager';
 import TaskCreator from '../components/admin/TaskCreator';
+import GameSettings from '../components/admin/GameSettings';
+import SabotageManager from '../components/admin/SabotageManager';
 
 export default function AdminPanel() {
-  const [playerCount, setPlayerCount] = useState(4);
   const { 
     gameCode,
     players,
@@ -24,8 +25,13 @@ export default function AdminPanel() {
 
   // Clear game state when mounting admin panel
   useEffect(() => {
-    reset();
-  }, [reset]);
+    const savedGameCode = localStorage.getItem('currentGameCode');
+    if (savedGameCode) {
+      setGameCode(savedGameCode);
+    } else {
+      reset();
+    }
+  }, [reset, setGameCode]);
 
   // Listen for player updates
   useEffect(() => {
@@ -37,6 +43,7 @@ export default function AdminPanel() {
   const handleCreateGame = () => {
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     setGameCode(newGameCode);
+    localStorage.setItem('currentGameCode', newGameCode);
   };
 
   const handleRemovePlayer = (playerId: string) => {
@@ -51,15 +58,17 @@ export default function AdminPanel() {
         </h1>
 
         <HomeAssistantSetup />
+        <GameSettings />
         <RoomManager />
         <TaskCreator />
+        <SabotageManager />
 
         {gameCode ? (
           <>
             <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
               <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
                 <Users className="w-6 h-6" />
-                Connected Players ({players.length}/{playerCount})
+                Connected Players
               </h2>
               {players.length === 0 ? (
                 <p className="text-gray-400">No players have joined yet</p>

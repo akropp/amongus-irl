@@ -13,6 +13,14 @@ export interface Task {
   completed: boolean;
 }
 
+export interface Sabotage {
+  id: string;
+  name: string;
+  room: string;
+  duration: number;
+  active: boolean;
+}
+
 export interface GameState {
   gameCode: string;
   players: Player[];
@@ -20,4 +28,5 @@ export interface GameState {
   phase: 'lobby' | 'playing' | 'meeting' | 'ended';
   rooms: string[];
   tasks: Task[];
+  sabotages: Sabotage[];
 }
