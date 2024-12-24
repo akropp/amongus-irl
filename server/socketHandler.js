@@ -45,7 +45,10 @@ export default function setupSocketHandlers(io) {
       console.log('Session registration:', { gameCode, playerId, clientId, isAdmin });
       
       const game = gameManager.getGame(gameCode);
-      if (!game) return;
+      if (!game) {
+        socket.emit('game-error', { message: 'Game not found' });
+        return;
+      }
 
       socket.join(gameCode);
       
@@ -57,7 +60,10 @@ export default function setupSocketHandlers(io) {
         });
       } else {
         const player = game.players.find(p => p.id === playerId);
-        if (!player) return;
+        if (!player) {
+          socket.emit('game-error', { message: 'Player not found' });
+          return;
+        }
         
         sessionManager.saveSession(clientId, { 
           gameCode,
@@ -66,11 +72,15 @@ export default function setupSocketHandlers(io) {
         });
       }
       
+      // Send current game state
       socket.emit('game-state', {
         gameCode,
         players: game.players,
         phase: game.phase
       });
+      
+      // Notify others of reconnection
+      socket.to(gameCode).emit('players-updated', game.players);
     });
 
     socket.on('join-game', ({ gameCode, player }) => {
@@ -97,6 +107,7 @@ export default function setupSocketHandlers(io) {
           players: updatedPlayers
         });
 
+        // Notify all clients in the game
         io.to(gameCode).emit('players-updated', updatedPlayers);
         
       } catch (error) {
@@ -112,6 +123,8 @@ export default function setupSocketHandlers(io) {
       if (!game) return;
 
       const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
+      
+      // Notify all clients in the game
       io.to(gameCode).emit('players-updated', updatedPlayers);
       io.to(gameCode).emit('player-removed', { playerId });
     });
@@ -125,6 +138,7 @@ export default function setupSocketHandlers(io) {
 
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
+      // Handle any cleanup if needed
     });
   });
 }

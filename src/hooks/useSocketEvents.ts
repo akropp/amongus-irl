@@ -10,16 +10,21 @@ export function useSocketEvents(isAdmin = false) {
 
   useEffect(() => {
     const handleConnect = () => {
-      console.log('Socket connected');
+      console.log('Socket connected, checking session...');
       const session = sessionManager.getSession();
       
       if (session.isValid()) {
-        console.log('Restoring session:', session);
+        console.log('Restoring session:', { 
+          gameCode: session.gameCode, 
+          playerId: session.playerId,
+          isAdmin: session.isAdmin 
+        });
+        
         socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
           playerId: session.playerId,
           clientId: sessionManager.getClientId(),
-          isAdmin
+          isAdmin: session.isAdmin
         });
       }
     };
@@ -34,12 +39,14 @@ export function useSocketEvents(isAdmin = false) {
       console.log('Players updated:', updatedPlayers);
       updatePlayers(updatedPlayers);
       
+      // Only check player existence for non-admin sessions
       if (!isAdmin) {
         const session = sessionManager.getSession();
         if (!session.playerId) return;
 
         const stillInGame = updatedPlayers.some(p => p.id === session.playerId);
         if (!stillInGame && !sessionManager.wasPlayerRemoved()) {
+          console.log('Player no longer in game, redirecting to join page');
           sessionManager.clearSession();
           reset();
           navigate('/', { replace: true });
@@ -49,18 +56,25 @@ export function useSocketEvents(isAdmin = false) {
 
     const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
       console.log('Player removed:', playerId);
-      if (!isAdmin) {
-        const session = sessionManager.getSession();
-        if (session.playerId === playerId) {
-          sessionManager.clearSession(true);
-          reset();
-          navigate('/', { replace: true });
-        }
+      const session = sessionManager.getSession();
+      
+      if (!isAdmin && session.playerId === playerId) {
+        console.log('Current player was removed, redirecting to join page');
+        sessionManager.clearSession(true);
+        reset();
+        navigate('/', { replace: true });
       }
     };
 
     const handleGameEnded = () => {
       console.log('Game ended');
+      sessionManager.clearSession();
+      reset();
+      navigate('/', { replace: true });
+    };
+
+    const handleGameError = (error: { message: string }) => {
+      console.error('Game error:', error);
       sessionManager.clearSession();
       reset();
       navigate('/', { replace: true });
@@ -72,6 +86,7 @@ export function useSocketEvents(isAdmin = false) {
     socketService.socket.on('players-updated', handlePlayersUpdate);
     socketService.socket.on('player-removed', handlePlayerRemoved);
     socketService.socket.on('game-ended', handleGameEnded);
+    socketService.socket.on('game-error', handleGameError);
 
     // Initial connection if socket is already connected
     if (socketService.socket.connected) {
@@ -84,6 +99,7 @@ export function useSocketEvents(isAdmin = false) {
       socketService.socket.off('players-updated', handlePlayersUpdate);
       socketService.socket.off('player-removed', handlePlayerRemoved);
       socketService.socket.off('game-ended', handleGameEnded);
+      socketService.socket.off('game-error', handleGameError);
     };
   }, [socketService, updatePlayers, setGameCode, reset, navigate, isAdmin]);
 }
