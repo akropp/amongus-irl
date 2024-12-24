@@ -24,11 +24,13 @@ const initialState: Omit<GameStore, 'socketService' | 'setGameCode' | 'addPlayer
   sabotages: []
 };
 
+const socketService = new SocketService();
+
 export const useGameStore = create<GameStore>()(
   persist(
     (set, get) => ({
       ...initialState,
-      socketService: new SocketService(),
+      socketService,
 
       setGameCode: (code) => {
         set({ gameCode: code ? code.toUpperCase() : null });
@@ -53,7 +55,6 @@ export const useGameStore = create<GameStore>()(
       setPhase: (phase) => set({ phase }),
       
       reset: () => {
-        const socketService = get().socketService;
         set({ ...initialState, socketService });
       }
     }),
