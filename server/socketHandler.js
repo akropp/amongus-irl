@@ -15,9 +15,9 @@ export default function setupSocketHandlers(io) {
     socket.on('end-game', ({ code }) => {
       console.log('Ending game:', code);
       if (gameManager.endGame(code)) {
-        io.to(code).emit('game-ended');
         // Notify all clients in the game room
-        socket.to(code).emit('game-ended');
+        io.to(code).emit('game-ended');
+        socket.leave(code);
       }
     });
 
@@ -85,7 +85,8 @@ export default function setupSocketHandlers(io) {
       io.to(gameCode).emit('players-updated', updatedPlayers);
       
       // Notify the removed player
-      socket.to(gameCode).emit('player-removed', { playerId });
+      io.to(gameCode).emit('player-removed', { playerId });
+      socket.leave(gameCode);
     });
 
     socket.on('disconnect', (reason) => {
@@ -93,6 +94,7 @@ export default function setupSocketHandlers(io) {
       if (currentGame && currentPlayer) {
         const updatedPlayers = gameManager.removePlayer(currentGame, currentPlayer.id);
         io.to(currentGame).emit('players-updated', updatedPlayers);
+        socket.leave(currentGame);
       }
     });
   });
