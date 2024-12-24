@@ -1,28 +1,28 @@
 import { useEffect } from 'react';
-import { useGameStore } from '../store/gameStore';
-import { Player } from '../types/game';
-import { clearGameSession } from '../utils/sessionHelpers';
 import { useNavigate } from 'react-router-dom';
+import { useGameStore } from '../store/gameStore';
+import { sessionManager } from '../utils/sessionManager';
+import { Player } from '../types/game';
 
-export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
-  const { socketService, updatePlayers, setGameCode, gameCode, reset } = useGameStore();
+export function useGameEvents() {
+  const { socketService, updatePlayers, reset } = useGameStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handlePlayersUpdate = (updatedPlayers: Player[]) => {
       console.log('Players updated:', updatedPlayers);
-      const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+      const session = sessionManager.getSession();
       
-      if (!currentPlayer.id) return;
+      if (!session.playerId) return;
 
       // Check if our player still exists in the game
-      const stillInGame = updatedPlayers.some(p => p.id === currentPlayer.id);
+      const stillInGame = updatedPlayers.some(p => p.id === session.playerId);
       
-      if (gameCode && stillInGame) {
+      if (stillInGame) {
         updatePlayers(updatedPlayers);
-      } else if (!localStorage.getItem('playerRemoved')) {
+      } else if (!sessionManager.wasPlayerRemoved()) {
         console.log('Player no longer in game, redirecting to join page');
-        clearGameSession();
+        sessionManager.clearSession();
         reset();
         navigate('/', { replace: true });
       }
@@ -30,21 +30,18 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
 
     const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
       console.log('Player removed:', playerId);
-      const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+      const session = sessionManager.getSession();
       
-      if (currentPlayer.id === playerId) {
-        clearGameSession();
+      if (session.playerId === playerId) {
+        sessionManager.clearSession(true);
         reset();
-        if (onPlayerRemoved) {
-          onPlayerRemoved(playerId);
-        }
         navigate('/', { replace: true });
       }
     };
 
     const handleGameEnded = () => {
       console.log('Game ended');
-      clearGameSession();
+      sessionManager.clearSession();
       reset();
       navigate('/', { replace: true });
     };
@@ -58,5 +55,5 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
       socketService.socket.off('player-removed', handlePlayerRemoved);
       socketService.socket.off('game-ended', handleGameEnded);
     };
-  }, [socketService, updatePlayers, setGameCode, onPlayerRemoved, gameCode, reset, navigate]);
+  }, [socketService, updatePlayers, reset, navigate]);
 }

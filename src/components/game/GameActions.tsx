@@ -18,20 +18,17 @@ export function GameActions({ playerId }: GameActionsProps) {
     console.log('Player leaving game:', { gameCode, playerId });
     
     // Mark player as removed to prevent reconnection attempts
-    sessionManager.markPlayerRemoved();
+    sessionManager.clearSession(true);
     
     // Emit remove player event
     socketService.socket.emit('remove-player', { 
       gameCode, 
       playerId,
-      clientId: socketService.getClientId()
+      clientId: sessionManager.getClientId()
     });
     
-    // Clear session and reset store
-    sessionManager.clearSession();
+    // Reset store and navigate
     reset();
-    
-    // Navigate back to join page
     navigate('/', { replace: true });
   };
 

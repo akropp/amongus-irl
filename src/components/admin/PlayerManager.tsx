@@ -2,13 +2,11 @@ import React from 'react';
 import { Users, UserX } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { Player } from '../../types/game';
-import { useGameEvents } from '../../hooks/useGameEvents';
+import { sessionManager } from '../../utils/sessionManager';
 
 export default function PlayerManager() {
   const { players, gameCode, socketService } = useGameStore();
   
-  useGameEvents();
-
   const handleRemovePlayer = (player: Player) => {
     if (!gameCode) return;
     
@@ -16,7 +14,8 @@ export default function PlayerManager() {
     socketService.socket.emit('remove-player', { 
       gameCode, 
       playerId: player.id,
-      clientId: socketService.getClientId()
+      clientId: sessionManager.getClientId(),
+      isAdmin: true
     });
   };
 
