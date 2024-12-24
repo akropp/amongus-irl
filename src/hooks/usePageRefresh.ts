@@ -22,8 +22,8 @@ export function usePageRefresh() {
       return;
     }
 
-    // Handle game not found
-    if (!gameCode && !savedGameCode) {
+    // Handle game not found - only redirect if no saved state
+    if (!gameCode && !savedGameCode && !savedPlayerId) {
       if (location.pathname !== '/') {
         navigate('/');
       }
@@ -32,12 +32,7 @@ export function usePageRefresh() {
 
     // Handle player pages
     if (location.pathname.includes('/lobby/') || location.pathname.includes('/game/')) {
-      if (!savedPlayerId) {
-        navigate('/');
-        return;
-      }
-
-      // Reconnect if needed
+      // Only reconnect if we have saved state and aren't already connected
       if (isConnected && savedGameCode && savedPlayerId) {
         const savedPlayerData = localStorage.getItem('currentPlayer');
         if (savedPlayerData) {
