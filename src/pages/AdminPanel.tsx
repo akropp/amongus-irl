@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Users, PlayCircle } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
 import RoomManager from '../components/admin/RoomManager';
 import TaskCreator from '../components/admin/TaskCreator';
-import GameSettings from '../components/admin/GameSettings';
-import SabotageManager from '../components/admin/SabotageManager';
+import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
+import SabotageConfig from '../components/admin/SabotageConfig';
 
 export default function AdminPanel() {
   const { 
@@ -47,7 +47,9 @@ export default function AdminPanel() {
   };
 
   const handleRemovePlayer = (playerId: string) => {
-    removePlayer(playerId);
+    if (gameCode) {
+      socketService.removePlayer(gameCode, playerId);
+    }
   };
 
   return (
@@ -58,10 +60,10 @@ export default function AdminPanel() {
         </h1>
 
         <HomeAssistantSetup />
-        <GameSettings />
+        <MaxPlayersConfig />
         <RoomManager />
         <TaskCreator />
-        <SabotageManager />
+        <SabotageConfig />
 
         {gameCode ? (
           <>

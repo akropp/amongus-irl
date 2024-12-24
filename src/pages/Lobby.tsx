@@ -1,22 +1,16 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Users, PlayCircle } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
+import { usePageRefresh } from '../hooks/usePageRefresh';
 
 export default function Lobby() {
   const { playerId } = useParams();
   const { players, phase, gameCode } = useGameStore();
   const navigate = useNavigate();
   
-  useEffect(() => {
-    // If no game code in state but exists in localStorage, restore it
-    if (!gameCode) {
-      const savedGameCode = localStorage.getItem('currentGameCode');
-      if (savedGameCode) {
-        useGameStore.getState().setGameCode(savedGameCode);
-      }
-    }
-  }, [gameCode]);
+  // Handle page refresh and navigation
+  usePageRefresh();
 
   const currentPlayer = players.find(p => p.id === playerId);
 

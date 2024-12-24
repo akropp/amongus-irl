@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ghost } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
+import { useSocket } from '../hooks/useSocket';
 
 export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
@@ -9,6 +10,7 @@ export default function JoinGame() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { socketService, setGameCode: updateGameCode, addPlayer, reset } = useGameStore();
+  const isConnected = useSocket();
 
   useEffect(() => {
     reset();
@@ -34,7 +36,7 @@ export default function JoinGame() {
     };
 
     const handleRemoved = () => {
-      setError('You have been removed from the game.');
+      setError('You have been removed from the game by the admin.');
       reset();
       navigate('/');
     };
@@ -55,7 +57,7 @@ export default function JoinGame() {
   const handleJoinGame = () => {
     setError('');
     
-    if (!socketService.isConnected()) {
+    if (!isConnected) {
       setError('Not connected to server. Please try again.');
       return;
     }
@@ -94,13 +96,13 @@ export default function JoinGame() {
         </div>
         
         <div className="mt-8 space-y-6">
-          {socketService.isConnected() ? (
+          {isConnected ? (
             <div className="bg-green-900/50 text-green-200 p-3 rounded-md text-sm">
               Connected to server
             </div>
           ) : (
             <div className="bg-red-900/50 text-red-200 p-3 rounded-md text-sm">
-              Not connected to server
+              Not connected to server. Please refresh the page.
             </div>
           )}
 
@@ -146,7 +148,7 @@ export default function JoinGame() {
 
           <button
             onClick={handleJoinGame}
-            disabled={!gameCode || !playerName || !socketService.isConnected()}
+            disabled={!gameCode || !playerName || !isConnected}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Join Game

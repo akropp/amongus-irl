@@ -3,7 +3,7 @@ import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
 import { Player } from '../types/game';
 
 export default class SocketService {
-  private socket: Socket;
+  public socket: Socket;
   private joinGameSuccessCallback: ((data: { player: Player; gameCode: string }) => void) | null = null;
   private joinGameErrorCallback: ((error: { message: string }) => void) | null = null;
   private playersUpdateCallback: ((players: Player[]) => void) | null = null;
