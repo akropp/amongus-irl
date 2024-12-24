@@ -17,10 +17,10 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
 
     const handlePlayerRemoved = ({ playerId }: { playerId: string }) => {
       console.log('Player removed:', playerId);
-      // Only handle removal if we're the removed player
-      if (onPlayerRemoved && playerId) {
-        const session = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
-        if (session.id === playerId) {
+      const currentPlayer = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+      if (currentPlayer.id === playerId) {
+        localStorage.setItem('playerRemoved', 'true');
+        if (onPlayerRemoved) {
           onPlayerRemoved(playerId);
         }
       }

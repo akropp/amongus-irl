@@ -10,7 +10,6 @@ export function useGameVerification() {
       if (storedGameCode) {
         const exists = await socketService.verifyGame(storedGameCode);
         if (!exists) {
-          // Clear all game state if the game doesn't exist
           reset();
           localStorage.removeItem('adminGameCode');
         } else if (!gameCode) {
