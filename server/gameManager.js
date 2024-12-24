@@ -57,7 +57,7 @@ class GameManager extends EventEmitter {
         throw new Error('Game is full');
       }
 
-      const newPlayer = gameQueries.addPlayer(gameCode, player.id, player.name, player.role);
+      const newPlayer = gameQueries.addPlayer(player.id, gameCode, player.name, player.role);
       if (!newPlayer) throw new Error('Failed to add player');
 
       game.players.push(newPlayer);
