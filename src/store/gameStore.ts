@@ -8,7 +8,7 @@ import { saveGameSession } from '../utils/sessionHelpers';
 interface GameStore extends GameState {
   haService: HomeAssistantService | null;
   socketService: SocketService;
-  setGameCode: (code: string) => void;
+  setGameCode: (code: string | null) => void;
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string) => void;
   updatePlayers: (players: Player[]) => void;
@@ -34,9 +34,14 @@ export const useGameStore = create<GameStore>()(
       socketService: new SocketService(),
 
       setGameCode: (code) => {
-        const normalizedCode = code.trim().toUpperCase();
+        const normalizedCode = code ? code.trim().toUpperCase() : '';
         set({ gameCode: normalizedCode });
-        saveGameSession({ gameCode: normalizedCode });
+        if (normalizedCode) {
+          saveGameSession({ gameCode: normalizedCode });
+          localStorage.setItem('adminGameCode', normalizedCode);
+        } else {
+          localStorage.removeItem('adminGameCode');
+        }
       },
       
       addPlayer: (player) => {

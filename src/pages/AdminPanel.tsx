@@ -31,13 +31,20 @@ export default function AdminPanel() {
 
         // Restore game code from storage if exists
         const storedGameCode = localStorage.getItem('adminGameCode');
-        if (storedGameCode && !gameCode) {
-          setGameCode(storedGameCode);
+        if (storedGameCode) {
+          // Verify the game exists
+          socketService.socket.emit('verify-game', { code: storedGameCode }, (response) => {
+            if (response.exists) {
+              setGameCode(storedGameCode);
+            } else {
+              setGameCode(null);
+              localStorage.removeItem('adminGameCode');
+            }
+          });
         }
 
         const handleGameCreated = ({ code }) => {
           setGameCode(code);
-          localStorage.setItem('adminGameCode', code);
         };
 
         const handlePlayersUpdate = (updatedPlayers) => {
@@ -45,14 +52,21 @@ export default function AdminPanel() {
           updatePlayers(updatedPlayers);
         };
 
+        const handleGameNotFound = () => {
+          setGameCode(null);
+          localStorage.removeItem('adminGameCode');
+        };
+
         socketService.socket.on('players-updated', handlePlayersUpdate);
         socketService.socket.on('game-created', handleGameCreated);
+        socketService.socket.on('game-not-found', handleGameNotFound);
         
         setIsInitializing(false);
 
         return () => {
           socketService.socket.off('players-updated', handlePlayersUpdate);
           socketService.socket.off('game-created', handleGameCreated);
+          socketService.socket.off('game-not-found', handleGameNotFound);
         };
       } catch (error) {
         console.error('Failed to initialize admin panel:', error);
@@ -62,7 +76,7 @@ export default function AdminPanel() {
     };
 
     init();
-  }, [socketService, setGameCode, updatePlayers, isSocketInitialized, gameCode]);
+  }, [socketService, setGameCode, updatePlayers, isSocketInitialized]);
 
   if (isInitializing) {
     return <LoadingSpinner />;
@@ -107,12 +121,16 @@ export default function AdminPanel() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <PlayerManager />
-          <HomeAssistantSetup />
-          <MaxPlayersConfig />
-          <RoomManager />
-          <TaskCreator />
-          <SabotageConfig />
+          {gameCode && (
+            <>
+              <PlayerManager />
+              <HomeAssistantSetup />
+              <MaxPlayersConfig />
+              <RoomManager />
+              <TaskCreator />
+              <SabotageConfig />
+            </>
+          )}
         </div>
       </div>
     </div>

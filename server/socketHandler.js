@@ -7,17 +7,22 @@ export default function setupSocketHandlers(io) {
     let currentGame = null;
     let currentPlayer = null;
 
-    socket.emit('connection_established', { id: socket.id });
+    socket.on('verify-game', ({ code }, callback) => {
+      const game = gameManager.getGame(code);
+      callback({ exists: !!game });
+    });
 
     socket.on('create-game', ({ code, maxPlayers, rooms }) => {
       console.log(`Creating game - Code: ${code}, Max Players: ${maxPlayers}, Rooms:`, rooms);
       try {
         // Check if game exists first
         let game = gameManager.getGame(code);
-        if (!game) {
-          game = gameManager.createGame(code, maxPlayers, rooms);
+        if (game) {
+          socket.emit('join-game-error', { message: 'Game already exists' });
+          return;
         }
         
+        game = gameManager.createGame(code, maxPlayers, rooms);
         currentGame = code;
         socket.join(code);
         io.emit('game-created', { code, maxPlayers, rooms });
@@ -33,32 +38,31 @@ export default function setupSocketHandlers(io) {
       
       try {
         const game = gameManager.getGame(gameCode);
-        console.log('Found game:', game);
         
         if (!game) {
-          console.log('Game not found for code:', gameCode);
-          socket.emit('join-game-error', { message: 'Invalid game code' });
+          socket.emit('join-game-error', { message: 'Game not found' });
+          socket.emit('game-not-found');
+          return;
+        }
+
+        if (game.players.length >= game.maxPlayers) {
+          socket.emit('join-game-error', { message: 'Game is full' });
           return;
         }
 
         // Add player to the game
         const updatedPlayers = gameManager.addPlayer(gameCode, player);
-        console.log(`Player ${player.name} joined game ${gameCode}. Total players:`, updatedPlayers.length);
-        
         currentGame = gameCode;
         currentPlayer = player;
         
-        // Join the socket room for this game
         socket.join(gameCode);
 
-        // Send success to the joining player with all current players
         socket.emit('join-game-success', { 
           player,
           gameCode,
           players: updatedPlayers
         });
 
-        // Broadcast updated player list to all players in the game
         io.to(gameCode).emit('players-updated', updatedPlayers);
         
       } catch (error) {
@@ -74,19 +78,6 @@ export default function setupSocketHandlers(io) {
       
       // Notify the removed player
       socket.to(gameCode).emit('player-removed', { playerId });
-    });
-
-    socket.on('start-game', ({ gameCode }) => {
-      console.log('Starting game:', gameCode);
-      try {
-        const game = gameManager.getGame(gameCode);
-        if (game) {
-          gameManager.updateGamePhase(gameCode, 'playing');
-          io.to(gameCode).emit('game-started');
-        }
-      } catch (error) {
-        console.error('Error starting game:', error);
-      }
     });
 
     socket.on('disconnect', (reason) => {

@@ -31,6 +31,18 @@ export default class SocketService {
     }
   }
 
+  public verifyGame(code: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (this.socket.connected) {
+        this.socket.emit('verify-game', { code }, (response) => {
+          resolve(response.exists);
+        });
+      } else {
+        resolve(false);
+      }
+    });
+  }
+
   public onJoinGameSuccess(callback: (data: { player: Player; gameCode: string; players: Player[] }) => void) {
     this.socket.on('join-game-success', callback);
   }
