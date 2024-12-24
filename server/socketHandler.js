@@ -39,11 +39,6 @@ export default function setupSocketHandlers(io) {
           return;
         }
 
-        if (game.players.length >= game.maxPlayers) {
-          socket.emit('join-game-error', { message: 'Game is full' });
-          return;
-        }
-
         // Add player to the game
         const updatedPlayers = gameManager.addPlayer(gameCode, player);
         currentGame = gameCode;
@@ -73,8 +68,8 @@ export default function setupSocketHandlers(io) {
       // Emit updated players list to all clients in the game room
       io.to(gameCode).emit('players-updated', updatedPlayers);
       
-      // Emit removal event specifically to the removed player's socket
-      io.to(socket.id).emit('player-removed', { playerId });
+      // Emit removal event specifically to the removed player
+      socket.emit('player-removed', { playerId });
     });
 
     socket.on('disconnect', (reason) => {
