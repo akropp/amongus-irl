@@ -41,16 +41,7 @@ export const useGameStore = create<GameStore>()(
       socketService: new SocketService(),
 
       setGameCode: (code) => {
-        const normalizedCode = code.trim().toUpperCase();
-        set({ gameCode: normalizedCode });
-        
-        if (normalizedCode) {
-          get().socketService.createGame(
-            normalizedCode,
-            get().maxPlayers,
-            get().rooms
-          );
-        }
+        set({ gameCode: code });
       },
       
       addPlayer: (player) => {

@@ -9,44 +9,19 @@ export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { socketService, setGameCode: updateGameCode, addPlayer, reset, players } = useGameStore();
+  const { socketService, setGameCode: updateGameCode, addPlayer, reset } = useGameStore();
   const isConnected = useSocket();
 
   useEffect(() => {
-    const checkExistingSession = () => {
-      const savedGameCode = localStorage.getItem('currentGameCode');
-      const savedPlayerId = localStorage.getItem('currentPlayerId');
-      const savedPlayer = localStorage.getItem('currentPlayer');
-      
-      if (savedGameCode && savedPlayerId && savedPlayer) {
-        const isPlayerActive = players.some(p => p.id === savedPlayerId);
-        if (isPlayerActive) {
-          navigate(`/lobby/${savedPlayerId}`);
-          return;
-        }
-      }
-      
-      // Clear any stale session data
-      localStorage.removeItem('currentGameCode');
-      localStorage.removeItem('currentPlayerId');
-      localStorage.removeItem('currentPlayer');
-      localStorage.removeItem('gamePhase');
-      reset();
-      setIsLoading(false);
-    };
-
-    if (isConnected) {
-      checkExistingSession();
-    } else {
-      // Wait for socket connection
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [navigate, reset, players, isConnected]);
+    // Clear any existing game state
+    reset();
+    localStorage.removeItem('currentGameCode');
+    localStorage.removeItem('currentPlayerId');
+    localStorage.removeItem('currentPlayer');
+    localStorage.removeItem('gamePhase');
+  }, [reset]);
 
   const handleJoinGame = () => {
     setError('');
@@ -93,6 +68,7 @@ export default function JoinGame() {
       localStorage.setItem('currentPlayer', JSON.stringify(player));
       localStorage.setItem('gamePhase', 'lobby');
       
+      setIsLoading(false);
       navigate(`/lobby/${player.id}`);
     };
 
