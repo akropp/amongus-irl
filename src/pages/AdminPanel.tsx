@@ -32,16 +32,14 @@ export default function AdminPanel() {
     }
 
     const handleGameCreated = (data: { code: string; maxPlayers: number; rooms: string[] }) => {
-      console.log('Game created:', data.code);
+      console.log('Game created:', data);
       setGameCode(data.code);
       localStorage.setItem('adminGameCode', data.code);
     };
 
-    // Set up socket event listener
     socketService.socket.on('game-created', handleGameCreated);
 
     return () => {
-      // Clean up socket event listener
       socketService.socket.off('game-created', handleGameCreated);
     };
   }, [isSocketInitialized, socketService, setGameCode]);
@@ -55,8 +53,16 @@ export default function AdminPanel() {
       setError('Not connected to server');
       return;
     }
+
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    socketService.createGame(newGameCode, useGameStore.getState().maxPlayers, rooms);
+    const maxPlayers = useGameStore.getState().maxPlayers;
+    
+    console.log('Creating game:', { code: newGameCode, maxPlayers, rooms });
+    socketService.socket.emit('create-game', { 
+      code: newGameCode, 
+      maxPlayers, 
+      rooms 
+    });
   };
 
   return (

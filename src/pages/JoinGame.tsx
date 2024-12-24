@@ -4,6 +4,7 @@ import { Ghost } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import { savePlayerSession, clearPlayerSession } from '../utils/playerSession';
 
 export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
@@ -16,28 +17,23 @@ export default function JoinGame() {
 
   useEffect(() => {
     reset();
-    localStorage.removeItem('currentGameCode');
-    localStorage.removeItem('currentPlayerId');
-    localStorage.removeItem('currentPlayer');
-    localStorage.removeItem('gamePhase');
-    localStorage.removeItem('playerRemoved');
+    clearPlayerSession();
   }, [reset]);
 
   useEffect(() => {
     const handleJoinSuccess = (data: { player: any; gameCode: string; players: any[] }) => {
+      console.log('Join success:', data);
       updateGameCode(data.gameCode);
       data.players.forEach(p => addPlayer(p));
       
-      localStorage.setItem('currentGameCode', data.gameCode);
-      localStorage.setItem('currentPlayerId', data.player.id);
-      localStorage.setItem('currentPlayer', JSON.stringify(data.player));
-      localStorage.setItem('gamePhase', 'lobby');
+      savePlayerSession(data.gameCode, data.player);
       
       setIsLoading(false);
       navigate(`/lobby/${data.player.id}`);
     };
 
     const handleJoinError = (error: { message: string }) => {
+      console.error('Join error:', error);
       setError(error.message);
       setIsLoading(false);
     };
@@ -83,7 +79,11 @@ export default function JoinGame() {
       tasks: []
     };
     
-    socketService.joinGame(normalizedInputCode, newPlayer);
+    console.log('Joining game:', { gameCode: normalizedInputCode, player: newPlayer });
+    socketService.socket.emit('join-game', { 
+      gameCode: normalizedInputCode, 
+      player: newPlayer 
+    });
   };
 
   if (isLoading) {
