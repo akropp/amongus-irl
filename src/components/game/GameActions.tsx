@@ -2,6 +2,7 @@ import React from 'react';
 import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
+import { sessionManager } from '../../utils/sessionManager';
 
 interface GameActionsProps {
   playerId: string;
@@ -13,14 +14,18 @@ export function GameActions({ playerId }: GameActionsProps) {
 
   const handleLeaveGame = () => {
     if (gameCode && playerId) {
-      localStorage.setItem('playerRemoved', 'true');
-      socketService.removePlayer(gameCode, playerId);
-      localStorage.removeItem('currentGameCode');
-      localStorage.removeItem('currentPlayerId');
-      localStorage.removeItem('currentPlayer');
-      localStorage.removeItem('gamePhase');
+      // Mark player as removed before sending the request
+      sessionManager.markPlayerRemoved();
+      
+      // Emit remove player event
+      socketService.socket.emit('remove-player', { gameCode, playerId });
+      
+      // Clear session and reset store
+      sessionManager.clearSession();
       reset();
-      navigate('/');
+      
+      // Navigate back to join page
+      navigate('/', { replace: true });
     }
   };
 

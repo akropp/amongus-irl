@@ -52,6 +52,31 @@ export default function setupSocketHandlers(io) {
       }
     });
 
+    socket.on('remove-player', ({ gameCode, playerId }) => {
+      console.log(`Remove player request - Client: ${clientId}, Game: ${gameCode}, Player: ${playerId}`);
+      try {
+        const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
+        
+        // Notify all clients in the game about player removal
+        io.to(gameCode).emit('players-updated', updatedPlayers);
+        io.to(gameCode).emit('player-removed', { playerId });
+        
+        // If no players left, end the game
+        if (updatedPlayers.length === 0) {
+          io.to(gameCode).emit('game-ended');
+        }
+      } catch (error) {
+        console.error('Error removing player:', error);
+      }
+    });
+
+    socket.on('end-game', ({ code }) => {
+      console.log(`End game request - Client: ${clientId}, Game: ${code}`);
+      if (gameManager.endGame(code)) {
+        io.to(code).emit('game-ended');
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`Client disconnected - Socket: ${socket.id}, Client ID: ${clientId}`);
     });
