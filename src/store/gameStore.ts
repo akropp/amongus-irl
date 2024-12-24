@@ -18,7 +18,7 @@ interface GameStore extends GameState {
 }
 
 const initialState = {
-  gameCode: '',
+  gameCode: null,
   players: [],
   maxPlayers: 15,
   phase: 'lobby' as const,
@@ -34,7 +34,7 @@ export const useGameStore = create<GameStore>()(
       socketService: new SocketService(),
 
       setGameCode: (code) => {
-        const normalizedCode = code ? code.trim().toUpperCase() : '';
+        const normalizedCode = code ? code.trim().toUpperCase() : null;
         set({ gameCode: normalizedCode });
         if (normalizedCode) {
           saveGameSession({ gameCode: normalizedCode });
@@ -82,11 +82,6 @@ export const useGameStore = create<GameStore>()(
     {
       name: 'game-storage',
       partialize: (state) => ({
-        gameCode: state.gameCode,
-        players: state.players,
-        phase: state.phase,
-        rooms: state.rooms,
-        tasks: state.tasks,
         maxPlayers: state.maxPlayers
       })
     }

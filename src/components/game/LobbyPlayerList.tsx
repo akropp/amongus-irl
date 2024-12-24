@@ -1,7 +1,9 @@
 import React from 'react';
 import { Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { useGameEvents } from '../../hooks/useGameEvents';
+import { clearGameSession } from '../../utils/sessionHelpers';
 
 interface LobbyPlayerListProps {
   currentPlayerId?: string;

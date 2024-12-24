@@ -13,6 +13,7 @@ export function GameActions({ playerId }: GameActionsProps) {
 
   const handleLeaveGame = () => {
     if (gameCode && playerId) {
+      localStorage.setItem('playerRemoved', 'true');
       socketService.removePlayer(gameCode, playerId);
       localStorage.removeItem('currentGameCode');
       localStorage.removeItem('currentPlayerId');

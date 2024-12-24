@@ -3,7 +3,6 @@ import { useGameStore } from '../store/gameStore';
 import { Player } from '../types/game';
 import { clearGameSession } from '../utils/sessionHelpers';
 
-// src/hooks/useGameEvents.ts
 export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
   const { socketService, updatePlayers, setGameCode, gameCode } = useGameStore();
 
@@ -20,7 +19,10 @@ export function useGameEvents(onPlayerRemoved?: (playerId: string) => void) {
       console.log('Player removed:', playerId);
       // Only handle removal if we're the removed player
       if (onPlayerRemoved && playerId) {
-        onPlayerRemoved(playerId);
+        const session = JSON.parse(localStorage.getItem('currentPlayer') || '{}');
+        if (session.id === playerId) {
+          onPlayerRemoved(playerId);
+        }
       }
     };
 
