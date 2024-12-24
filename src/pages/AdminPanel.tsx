@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
-import { sessionManager } from '../utils/sessionManager';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
 import RoomManager from '../components/admin/RoomManager';
 import TaskCreator from '../components/admin/TaskCreator';
@@ -9,64 +8,48 @@ import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
 import SabotageConfig from '../components/admin/SabotageConfig';
 import PlayerManager from '../components/admin/PlayerManager';
 import GameControls from '../components/admin/GameControls';
-import { useSocketInit } from '../hooks/useSocketInit';
-import { useGameVerification } from '../hooks/useGameVerification';
+import { useSocket } from '../hooks/useSocket';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 
 export default function AdminPanel() {
   const [error, setError] = useState('');
-  const [isInitializing, setIsInitializing] = useState(true);
   const { 
     gameCode,
     setGameCode,
     socketService,
+    maxPlayers
   } = useGameStore();
 
   const { rooms } = useAdminStore();
-  const isSocketInitialized = useSocketInit();
-  
-  useGameVerification();
+  const isConnected = useSocket();
 
   useEffect(() => {
-    if (isSocketInitialized) {
-      setIsInitializing(false);
-    }
-
-    const handleGameCreated = (data: { code: string; maxPlayers: number; rooms: string[] }) => {
+    const handleGameCreated = (data) => {
       console.log('Game created:', data);
-      sessionManager.saveGameSession(data.code, null, true);
       setGameCode(data.code);
     };
 
-    const handleGameEnded = () => {
-      console.log('Game ended');
-      sessionManager.clearSession();
-      setGameCode(null);
-    };
-
     socketService.socket.on('game-created', handleGameCreated);
-    socketService.socket.on('game-ended', handleGameEnded);
+    return () => socketService.socket.off('game-created', handleGameCreated);
+  }, [socketService, setGameCode]);
 
-    return () => {
-      socketService.socket.off('game-created', handleGameCreated);
-      socketService.socket.off('game-ended', handleGameEnded);
-    };
-  }, [isSocketInitialized, socketService, setGameCode]);
+  if (!isConnected) {
+    return <LoadingSpinner />;
+  }
 
   const handleCreateGame = () => {
-    if (!isSocketInitialized) {
+    if (!isConnected) {
       setError('Not connected to server');
       return;
     }
 
     const newGameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const maxPlayers = useGameStore.getState().maxPlayers;
-    
     console.log('Creating game:', { code: newGameCode, maxPlayers, rooms });
+    
     socketService.socket.emit('create-game', { 
-      code: newGameCode, 
-      maxPlayers, 
-      rooms 
+      code: newGameCode,
+      maxPlayers,
+      rooms
     });
   };
 
@@ -75,7 +58,7 @@ export default function AdminPanel() {
       <div className="max-w-6xl mx-auto space-y-8">
         <GameControls 
           onCreateGame={handleCreateGame}
-          isSocketInitialized={isSocketInitialized}
+          isSocketInitialized={isConnected}
         />
 
         {error && (
