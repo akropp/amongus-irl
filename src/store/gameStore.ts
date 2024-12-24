@@ -13,14 +13,6 @@ interface GameStore extends GameState {
   updatePlayers: (players: Player[]) => void;
   setMaxPlayers: (count: number) => void;
   setPhase: (phase: GameState['phase']) => void;
-  updatePlayerTask: (playerId: string, taskId: string, completed: boolean) => void;
-  setRooms: (rooms: string[]) => void;
-  addTask: (task: Task) => void;
-  removeTask: (taskId: string) => void;
-  assignRoles: () => void;
-  assignTasks: () => void;
-  initializeHomeAssistant: (token: string) => void;
-  startGame: () => void;
   reset: () => void;
 }
 
@@ -41,7 +33,8 @@ export const useGameStore = create<GameStore>()(
       socketService: new SocketService(),
 
       setGameCode: (code) => {
-        set({ gameCode: code });
+        const normalizedCode = code.trim().toUpperCase();
+        set({ gameCode: normalizedCode });
       },
       
       addPlayer: (player) => {
