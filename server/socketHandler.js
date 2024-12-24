@@ -66,14 +66,17 @@ export default function setupSocketHandlers(io) {
         socket.emit('join-game-error', { message: error.message });
       }
     });
-
+    
+    // server/socketHandler.js
     socket.on('remove-player', ({ gameCode, playerId }) => {
       console.log(`Removing player ${playerId} from game ${gameCode}`);
       const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
+      
+      // Emit to all clients in the game room
       io.to(gameCode).emit('players-updated', updatedPlayers);
       
-      // Notify the removed player
-      socket.to(gameCode).emit('player-removed', { playerId });
+      // Emit specifically to the removed player
+      io.to(socket.id).emit('player-removed', { playerId });
     });
 
     socket.on('end-game', ({ code }) => {
