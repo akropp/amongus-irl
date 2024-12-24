@@ -12,8 +12,6 @@ export const SERVER_URL = import.meta.env.VITE_SERVER_URL ||
 
 export const SOCKET_OPTIONS = {
   transports: ['websocket', 'polling'],
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  timeout: 20000,
-  autoConnect: true
+  autoConnect: false, // Changed to false to handle connection manually
+  forceNew: true
 };

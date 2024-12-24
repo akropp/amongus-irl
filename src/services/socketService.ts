@@ -10,10 +10,13 @@ export default class SocketService {
     
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
-      auth: { clientId }
+      auth: { clientId },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000
     });
 
-    // Log connection events for debugging
     this.socket.on('connect', () => {
       console.log('Socket connected successfully');
     });
@@ -21,18 +24,20 @@ export default class SocketService {
     this.socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
     });
+
+    // Force initial connection
+    if (!this.socket.connected) {
+      this.socket.connect();
+    }
   }
 
   public isConnected(): boolean {
     return this.socket.connected;
   }
 
-  public getClientId(): string | null {
-    return sessionManager.getClientId();
-  }
-
   public connect(): void {
     if (!this.socket.connected) {
+      console.log('Forcing socket connection...');
       this.socket.connect();
     }
   }

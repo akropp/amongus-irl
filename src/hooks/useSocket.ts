@@ -16,8 +16,9 @@ export function useSocket() {
       setIsConnected(false);
     };
 
-    // Connect socket if not already connected
+    // Force connect if not already connected
     if (!socketService.socket.connected) {
+      console.log('Initiating socket connection...');
       socketService.socket.connect();
     } else {
       setIsConnected(true);
@@ -25,10 +26,15 @@ export function useSocket() {
 
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('disconnect', handleDisconnect);
+    socketService.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setIsConnected(false);
+    });
 
     return () => {
       socketService.socket.off('connect', handleConnect);
       socketService.socket.off('disconnect', handleDisconnect);
+      socketService.socket.off('connect_error');
     };
   }, [socketService]);
 
