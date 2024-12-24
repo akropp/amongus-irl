@@ -19,37 +19,38 @@ export default function JoinGame() {
     const checkExistingSession = async () => {
       const savedGameCode = localStorage.getItem('currentGameCode');
       const savedPlayerId = localStorage.getItem('currentPlayerId');
+      const savedPlayer = localStorage.getItem('currentPlayer');
       
-      if (savedGameCode && savedPlayerId) {
+      if (savedGameCode && savedPlayerId && savedPlayer) {
         // Verify if the player is still in the game
         const isPlayerActive = players.some(p => p.id === savedPlayerId);
         
         if (isPlayerActive) {
           navigate(`/lobby/${savedPlayerId}`);
           return;
+        } else {
+          // Clear invalid session
+          localStorage.removeItem('currentGameCode');
+          localStorage.removeItem('currentPlayerId');
+          localStorage.removeItem('currentPlayer');
+          localStorage.removeItem('gamePhase');
+          reset();
         }
       }
       
-      // Clear any stale session data
-      reset();
-      localStorage.removeItem('currentGameCode');
-      localStorage.removeItem('currentPlayerId');
-      localStorage.removeItem('currentPlayer');
-      localStorage.removeItem('gamePhase');
       setIsLoading(false);
     };
 
-    checkExistingSession();
+    // Short timeout to allow socket connection
+    setTimeout(checkExistingSession, 500);
   }, [navigate, reset, players]);
 
   useEffect(() => {
     const handleJoinSuccess = ({ player, gameCode, players }) => {
       console.log('Join success:', { player, gameCode, players });
       updateGameCode(gameCode);
-      // Update all players
       players.forEach(p => addPlayer(p));
       
-      // Save current player data
       localStorage.setItem('currentGameCode', gameCode);
       localStorage.setItem('currentPlayerId', player.id);
       localStorage.setItem('currentPlayer', JSON.stringify(player));
@@ -61,6 +62,7 @@ export default function JoinGame() {
     const handleJoinError = (error) => {
       console.error('Join error:', error);
       setError(error.message);
+      setIsLoading(false);
     };
 
     socketService.onJoinGameSuccess(handleJoinSuccess);
@@ -74,9 +76,11 @@ export default function JoinGame() {
 
   const handleJoinGame = () => {
     setError('');
+    setIsLoading(true);
     
     if (!isConnected) {
       setError('Not connected to server. Please try again.');
+      setIsLoading(false);
       return;
     }
 
@@ -84,11 +88,13 @@ export default function JoinGame() {
     
     if (!normalizedInputCode) {
       setError('Please enter a game code');
+      setIsLoading(false);
       return;
     }
 
     if (!playerName.trim()) {
       setError('Please enter your name');
+      setIsLoading(false);
       return;
     }
 
