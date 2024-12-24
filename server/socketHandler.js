@@ -6,43 +6,19 @@ export default function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
-    // Player Registration and Reconnection
     socket.on('register-player', ({ gameCode, playerId }) => {
       console.log(`Registering player ${playerId} for game ${gameCode}`);
       
+      const game = gameManager.getGame(gameCode);
+      if (!game) return;
+
       socketManager.registerSocket(socket.id, gameCode, playerId);
+      socket.join(gameCode);
       
-      if (playerManager.handleReconnect(gameCode, playerId, socket.id)) {
-        socket.join(gameCode);
-        const game = gameManager.getGame(gameCode);
-        if (game) {
-          socket.emit('reconnection-successful');
-          io.to(gameCode).emit('players-updated', game.players);
-        }
-      }
+      // Broadcast current game state
+      io.to(gameCode).emit('players-updated', game.players);
     });
 
-    // Game Creation and Management
-    socket.on('create-game', ({ code, maxPlayers, rooms }) => {
-      console.log(`Creating game - Code: ${code}, Max Players: ${maxPlayers}, Rooms:`, rooms);
-      try {
-        const existingGame = gameManager.getGame(code);
-        if (existingGame) {
-          socket.emit('join-game-error', { message: 'Game already exists' });
-          return;
-        }
-        
-        const game = gameManager.createGame(code, maxPlayers, rooms);
-        socket.join(code);
-        io.emit('game-created', { code, maxPlayers, rooms });
-        
-      } catch (error) {
-        console.error('Error in create-game:', error);
-        socket.emit('error', { message: error.message });
-      }
-    });
-
-    // Player Join/Leave Management
     socket.on('join-game', ({ gameCode, player }) => {
       console.log(`Join game attempt - Code: ${gameCode}, Player:`, player);
       
@@ -63,12 +39,14 @@ export default function setupSocketHandlers(io) {
         socketManager.registerSocket(socket.id, gameCode, player.id);
         socket.join(gameCode);
 
+        // Emit success to joining player
         socket.emit('join-game-success', { 
           player,
           gameCode,
           players: updatedPlayers
         });
 
+        // Broadcast to all players including sender
         io.to(gameCode).emit('players-updated', updatedPlayers);
         
       } catch (error) {
@@ -79,41 +57,18 @@ export default function setupSocketHandlers(io) {
 
     socket.on('remove-player', ({ gameCode, playerId }) => {
       console.log(`Removing player ${playerId} from game ${gameCode}`);
+      
       const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
       socketManager.unregisterSocket(socket.id);
       socket.leave(gameCode);
       
-      io.to(gameCode).emit('players-updated', updatedPlayers);
+      // Notify the removed player
       socket.emit('player-removed', { playerId });
+      
+      // Broadcast updated player list to remaining players
+      io.to(gameCode).emit('players-updated', updatedPlayers);
     });
 
-    // Game State Management
-    socket.on('verify-game', ({ code }, callback) => {
-      const game = gameManager.getGame(code);
-      callback({ exists: !!game });
-    });
-
-    socket.on('end-game', ({ code }) => {
-      console.log('Ending game:', code);
-      const game = gameManager.getGame(code);
-      if (game) {
-        gameManager.endGame(code);
-        io.to(code).emit('game-ended');
-        
-        // Disconnect all players from the game room
-        const sockets = io.sockets.adapter.rooms.get(code);
-        if (sockets) {
-          sockets.forEach(socketId => {
-            const socket = io.sockets.sockets.get(socketId);
-            if (socket) {
-              socket.leave(code);
-            }
-          });
-        }
-      }
-    });
-
-    // Disconnection Handling
     socket.on('disconnect', (reason) => {
       console.log('Client disconnected:', socket.id, 'Reason:', reason);
       
@@ -121,15 +76,20 @@ export default function setupSocketHandlers(io) {
       if (playerInfo) {
         const { gameCode, playerId } = playerInfo;
         playerManager.handleDisconnect(gameCode, playerId, socket.id);
+        
+        // Don't remove player immediately, wait for reconnect timeout
+        const game = gameManager.getGame(gameCode);
+        if (game) {
+          io.to(gameCode).emit('player-disconnected', { playerId });
+        }
       }
     });
   });
 
-  // Handle player timeout (when reconnection fails)
+  // Handle player timeout
   playerManager.on('player-timeout', ({ gameCode, playerId }) => {
-    const game = gameManager.getGame(gameCode);
-    if (game) {
-      const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
+    const updatedPlayers = gameManager.removePlayer(gameCode, playerId);
+    if (updatedPlayers.length > 0) {
       io.to(gameCode).emit('players-updated', updatedPlayers);
       io.to(gameCode).emit('player-removed', { playerId });
     }

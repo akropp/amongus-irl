@@ -10,14 +10,12 @@ class PlayerManager extends EventEmitter {
   handleDisconnect(gameCode, playerId, socketId) {
     console.log(`PlayerManager: Player ${playerId} disconnected from game ${gameCode}`);
     
-    // Store disconnected player info
     this.disconnectedPlayers.set(playerId, {
       gameCode,
       socketId,
       timestamp: Date.now()
     });
 
-    // Set reconnection timeout
     setTimeout(() => {
       if (this.disconnectedPlayers.has(playerId)) {
         console.log(`PlayerManager: Player ${playerId} failed to reconnect, removing`);
