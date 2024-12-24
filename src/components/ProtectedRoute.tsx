@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { gameCode, players } = useGameStore();
   const path = window.location.pathname;
 
-  // Allow admin access without game code check
+  // Always allow admin access
   if (path === '/admin') {
     return <>{children}</>;
   }
@@ -19,8 +19,14 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   // For game routes, check if there's an active game and valid session
   const session = getGameSession();
   
-  if (!gameCode || players.length === 0 || !isValidGameSession(session, players)) {
-    // Clear invalid session data
+  // If we're on a game route but don't have a valid session, redirect to join page
+  if (!gameCode || !session.gameCode || !session.playerId) {
+    clearGameSession();
+    return <Navigate to="/" replace />;
+  }
+
+  // If we have a session but the player isn't in the game anymore
+  if (session.playerId && players.length > 0 && !players.some(p => p.id === session.playerId)) {
     clearGameSession();
     return <Navigate to="/" replace />;
   }

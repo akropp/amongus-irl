@@ -7,9 +7,10 @@ export default function PlayerManager() {
   const { players, gameCode, socketService } = useGameStore();
 
   const handleRemovePlayer = (player: Player) => {
-    if (gameCode) {
-      socketService.removePlayer(gameCode, player.id);
-    }
+    if (!gameCode) return;
+    
+    // Don't trigger a full page refresh when removing players from admin panel
+    socketService.removePlayer(gameCode, player.id);
   };
 
   return (

@@ -8,41 +8,66 @@ import TaskCreator from '../components/admin/TaskCreator';
 import MaxPlayersConfig from '../components/admin/MaxPlayersConfig';
 import SabotageConfig from '../components/admin/SabotageConfig';
 import PlayerManager from '../components/admin/PlayerManager';
-import { useSocket } from '../hooks/useSocket';
+import { useSocketInit } from '../hooks/useSocketInit';
+import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 
 export default function AdminPanel() {
   const [error, setError] = useState('');
+  const [isInitializing, setIsInitializing] = useState(true);
   const { 
     gameCode,
     setGameCode,
     socketService,
-    updatePlayers
+    updatePlayers,
+    players
   } = useGameStore();
 
   const {
     rooms,
   } = useAdminStore();
 
-  const isConnected = useSocket();
+  const isConnected = useSocketInit();
 
   useEffect(() => {
-    const handleGameCreated = ({ code }) => {
-      setGameCode(code);
-      localStorage.setItem('adminGameCode', code);
+    const init = async () => {
+      try {
+        // Wait for socket connection
+        if (!isConnected) {
+          return;
+        }
+
+        const handleGameCreated = ({ code }) => {
+          setGameCode(code);
+          localStorage.setItem('adminGameCode', code);
+        };
+
+        const handlePlayersUpdate = (updatedPlayers) => {
+          console.log('Players updated:', updatedPlayers);
+          updatePlayers(updatedPlayers);
+        };
+
+        socketService.socket.on('players-updated', handlePlayersUpdate);
+        socketService.socket.on('game-created', handleGameCreated);
+        
+        setIsInitializing(false);
+
+        return () => {
+          socketService.socket.off('players-updated', handlePlayersUpdate);
+          socketService.socket.off('game-created', handleGameCreated);
+        };
+      } catch (error) {
+        console.error('Failed to initialize admin panel:', error);
+        setError('Failed to initialize admin panel');
+        setIsInitializing(false);
+      }
     };
 
-    const handlePlayersUpdate = (players) => {
-      updatePlayers(players);
-    };
+    init();
+  }, [socketService, setGameCode, updatePlayers, isConnected]);
 
-    socketService.onGameCreated(handleGameCreated);
-    socketService.onPlayersUpdated(handlePlayersUpdate);
-    
-    return () => {
-      socketService.offGameCreated();
-      socketService.offPlayersUpdated();
-    };
-  }, [socketService, setGameCode, updatePlayers]);
+  if (isInitializing) {
+    return <LoadingSpinner />;
+  }
 
   const handleCreateGame = () => {
     if (!isConnected) {

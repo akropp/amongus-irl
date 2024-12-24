@@ -15,17 +15,25 @@ export default function Lobby() {
   
   usePageRefresh();
 
-  // Socket event handlers and session verification remain the same...
-
   const currentPlayer = players.find(p => p.id === playerId);
 
-  if (!currentPlayer || !gameCode) {
-    return <LoadingSpinner />;
-  }
+  // Redirect to login if no player or game code
+  useEffect(() => {
+    if (!currentPlayer || !gameCode) {
+      navigate('/', { replace: true });
+      return;
+    }
+  }, [currentPlayer, gameCode, navigate]);
 
+  // Redirect to game if phase is playing
   if (phase === 'playing') {
     navigate(`/game/${playerId}`);
     return null;
+  }
+
+  // Show loading state while checking player/game status
+  if (!currentPlayer || !gameCode) {
+    return <LoadingSpinner />;
   }
 
   return (
