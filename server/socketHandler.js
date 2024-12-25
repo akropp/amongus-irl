@@ -1,96 +1,69 @@
 import gameManager from './gameManager.js';
 import sessionManager from './sessionManager.js';
-import socketManager from './socketManager.js';
-import playerManager from './playerManager.js';
 
 export default function setupSocketHandlers(io) {
+  // Make gameManager globally available for session validation
+  global.gameManager = gameManager;
+
   io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
-    
-    // Get client ID from auth
-    const { clientId } = socket.handshake.auth;
-    if (!clientId) {
-      console.log('No client ID provided, closing connection');
-      socket.disconnect();
-      return;
-    }
+    console.log('🔌 Client connected:', socket.id);
 
-    // Handle session registration
-    socket.on('register-session', ({ clientId, gameCode, playerId, isAdmin }) => {
-      console.log('Registering session:', { clientId, gameCode, playerId, isAdmin });
-      
-      const game = gameManager.getGame(gameCode);
-      if (!game) {
-        socket.emit('game-error', { message: 'Game not found' });
-        return;
-      }
-
-      sessionManager.saveSession(clientId, { gameCode, playerId, isAdmin });
-      
-      socket.join(gameCode);
-      if (playerId) {
-        socketManager.registerSocket(socket.id, gameCode, playerId);
-      }
-
-      socket.emit('game-state', {
-        gameCode: game.code,
-        players: game.players,
-        phase: game.phase
-      });
+    socket.onAny((event, ...args) => {
+      console.log(`📥 [${socket.id}] Received ${event}:`, args);
     });
 
-    // Handle game creation
+    socket.on('verify-game', ({ code }, callback) => {
+      const exists = gameManager.verifyGame(code);
+      console.log('🔍 Verifying game:', { code, exists });
+      callback({ exists });
+    });
+
     socket.on('create-game', ({ code, maxPlayers, rooms, clientId }) => {
+      console.log('🎮 Creating game:', { code, maxPlayers, rooms, clientId });
+      
       try {
-        if (gameManager.verifyGame(code)) {
-          socket.emit('game-error', { message: 'Game already exists' });
-          return;
+        const game = gameManager.createGame(code, maxPlayers, rooms);
+        
+        if (sessionManager.saveSession(clientId, { 
+          gameCode: code,
+          socketId: socket.id,
+          isAdmin: true
+        })) {
+          socket.join(code);
+          socket.emit('game-created', { code, maxPlayers, rooms, players: [] });
+          console.log('✅ Game created:', code);
         }
         
-        const game = gameManager.createGame(code, maxPlayers, rooms);
-        sessionManager.saveSession(clientId, { gameCode: code, isAdmin: true });
-        
-        socket.join(code);
-        socket.emit('game-created', {
-          code: game.code,
-          maxPlayers: game.maxPlayers,
-          rooms: game.rooms,
-          players: game.players
-        });
-        
       } catch (error) {
+        console.error('❌ Error creating game:', error);
         socket.emit('game-error', { message: error.message });
       }
     });
 
-    // Handle player joining
     socket.on('join-game', ({ gameCode, player, clientId }) => {
+      console.log('👤 Join attempt:', { gameCode, player: player.name, clientId });
+      
       try {
         const game = gameManager.getGame(gameCode);
         if (!game) {
-          socket.emit('game-error', { message: 'Game not found' });
-          return;
-        }
-
-        if (game.players.length >= game.maxPlayers) {
-          socket.emit('game-error', { message: 'Game is full' });
-          return;
+          throw new Error('Game not found');
         }
 
         const players = gameManager.addPlayer(gameCode, player);
-        sessionManager.saveSession(clientId, { 
-          gameCode, 
+        
+        if (sessionManager.saveSession(clientId, {
+          gameCode,
           playerId: player.id,
-          isAdmin: false 
-        });
-        
-        socketManager.registerSocket(socket.id, gameCode, player.id);
-        socket.join(gameCode);
-        
-        socket.emit('join-game-success', { gameCode, player, players });
-        io.to(gameCode).emit('players-updated', players);
+          socketId: socket.id
+        })) {
+          socket.join(gameCode);
+          socket.emit('join-game-success', { gameCode, player, players });
+          io.to(gameCode).emit('players-updated', players);
+          console.log('✅ Player joined:', player.name);
+        }
         
       } catch (error) {
+        console.error('❌ Join error:', error);
         socket.emit('game-error', { message: error.message });
       }
     });

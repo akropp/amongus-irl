@@ -1,20 +1,32 @@
 class SessionManager {
   constructor() {
     this.sessions = new Map();
-    this.cleanupInterval = setInterval(() => this.cleanup(), 1000 * 60 * 5);
   }
 
   saveSession(clientId, data) {
-    console.log('Saving session:', { clientId, data });
+    // Verify game exists before saving session
+    if (data.gameCode && !global.gameManager.verifyGame(data.gameCode)) {
+      console.log('🚫 Attempted to save session for non-existent game:', data.gameCode);
+      return false;
+    }
+
+    console.log('💾 Saving session:', { clientId, data });
     this.sessions.set(clientId, {
       ...data,
       lastActive: Date.now()
     });
+    return true;
   }
 
   getSession(clientId) {
     const session = this.sessions.get(clientId);
     if (session) {
+      // Verify game still exists
+      if (session.gameCode && !global.gameManager.verifyGame(session.gameCode)) {
+        console.log('🚫 Game no longer exists, clearing session:', session.gameCode);
+        this.removeSession(clientId);
+        return null;
+      }
       session.lastActive = Date.now();
       this.sessions.set(clientId, session);
     }
@@ -22,6 +34,7 @@ class SessionManager {
   }
 
   removeSession(clientId) {
+    console.log('🗑️ Removing session:', clientId);
     this.sessions.delete(clientId);
   }
 
@@ -34,17 +47,6 @@ class SessionManager {
         this.sessions.delete(clientId);
       }
     }
-  }
-
-  getGameSessions(gameCode) {
-    return Array.from(this.sessions.entries())
-      .filter(([_, session]) => session.gameCode === gameCode)
-      .map(([clientId, session]) => ({ clientId, ...session }));
-  }
-
-  isPlayerInGame(gameCode, playerId) {
-    return Array.from(this.sessions.values())
-      .some(session => session.gameCode === gameCode && session.playerId === playerId);
   }
 }
 

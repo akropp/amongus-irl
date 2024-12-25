@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { GameState, Player } from '../types/game';
 import SocketService from '../services/socketService';
+import { sessionManager } from '../utils/sessionManager';
 
 interface GameStore extends GameState {
   socketService: SocketService;
@@ -22,12 +23,11 @@ const initialState: Omit<GameStore, 'socketService' | 'setGameCode' | 'updatePla
   sabotages: []
 };
 
-// Create a single socket service instance
 const socketService = new SocketService();
 
 export const useGameStore = create<GameStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
       socketService,
 
@@ -35,25 +35,20 @@ export const useGameStore = create<GameStore>()(
         const normalizedCode = code ? code.toUpperCase() : null;
         set({ gameCode: normalizedCode });
         
-        // Update session if code changes
-        if (normalizedCode) {
-          const session = get().socketService.socket.auth || {};
-          get().socketService.socket.auth = {
-            ...session,
-            gameCode: normalizedCode
-          };
+        // Clear session if game code is cleared
+        if (!normalizedCode) {
+          sessionManager.clearSession();
         }
       },
       
-      updatePlayers: (players) => {
-        set({ players });
-      },
+      updatePlayers: (players) => set({ players }),
       
       setMaxPlayers: (count) => set({ maxPlayers: count }),
       
       setPhase: (phase) => set({ phase }),
       
       reset: () => {
+        sessionManager.clearSession();
         set(state => ({
           ...initialState,
           socketService: state.socketService
