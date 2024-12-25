@@ -4,13 +4,13 @@ import { useGameStore } from '../store/gameStore';
 import { sessionManager } from '../utils/sessionManager';
 
 export function useSocketEvents() {
-  const { socketService, updatePlayers, setGameCode, reset } = useGameStore();
+  const { socketService, updatePlayers, reset } = useGameStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleGameState = (state) => {
       console.log('Received game state:', state);
-      setGameCode(state.gameCode);
+      useGameStore.getState().setPhase(state.phase);
       updatePlayers(state.players || []);
 
       // Navigate to correct page based on session
@@ -42,7 +42,7 @@ export function useSocketEvents() {
     const handlePlayerRemoved = ({ playerId }) => {
       const session = sessionManager.getSession();
       if (session.playerId === playerId) {
-        sessionManager.clearSession(true);
+        sessionManager.clearSession();
         reset();
         navigate('/', { replace: true });
       }
@@ -57,7 +57,6 @@ export function useSocketEvents() {
 
     const handleError = (error) => {
       console.error('Game error:', error);
-      // Clear session and reset state for any game-related errors
       if (error.message.includes('Game') || error.message.includes('game')) {
         console.log('Game error occurred, clearing session');
         sessionManager.clearSession();
@@ -66,7 +65,6 @@ export function useSocketEvents() {
       }
     };
 
-    // Set up event listeners
     socketService.socket.on('game-state', handleGameState);
     socketService.socket.on('players-updated', handlePlayersUpdate);
     socketService.socket.on('player-removed', handlePlayerRemoved);
@@ -80,5 +78,5 @@ export function useSocketEvents() {
       socketService.socket.off('game-ended', handleGameEnded);
       socketService.socket.off('game-error', handleError);
     };
-  }, [socketService.socket, updatePlayers, setGameCode, reset, navigate]);
+  }, [socketService.socket, updatePlayers, reset, navigate]);
 }

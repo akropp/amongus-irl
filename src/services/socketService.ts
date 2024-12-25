@@ -8,7 +8,6 @@ export default class SocketService {
   constructor() {
     console.log('🔌 Initializing socket service');
     
-    // Create socket with auth
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
       auth: {
@@ -25,7 +24,7 @@ export default class SocketService {
       
       // Register session on connect if valid
       const session = sessionManager.getSession();
-      if (session.gameCode) {
+      if (session.playerId || session.isAdmin) {
         console.log('Registering session on connect:', {
           clientId: sessionManager.getClientId(),
           ...session
@@ -33,7 +32,8 @@ export default class SocketService {
         
         this.socket.emit('register-session', {
           clientId: sessionManager.getClientId(),
-          ...session
+          playerId: session.playerId,
+          isAdmin: session.isAdmin
         });
       }
     });
