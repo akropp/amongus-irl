@@ -83,7 +83,6 @@ export default function JoinGame() {
     };
   }, [socketService.socket, navigate, updateGameCode, updatePlayers]);
 
-
   if (isLoading) {
     return <LoadingSpinner />;
   }

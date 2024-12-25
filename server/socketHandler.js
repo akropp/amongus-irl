@@ -1,5 +1,7 @@
 import gameManager from './gameManager.js';
 import sessionManager from './sessionManager.js';
+import socketManager from './socketManager.js';
+import playerManager from './playerManager.js';
 
 export default function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
@@ -13,22 +15,7 @@ export default function setupSocketHandlers(io) {
       return;
     }
 
-    // Restore session if exists
-    const session = sessionManager.getSession(clientId);
-    if (session?.gameCode) {
-      console.log('Restoring session:', session);
-      
-      const game = gameManager.getGame(session.gameCode);
-      if (game) {
-        socket.join(session.gameCode);
-        socket.emit('game-state', {
-          gameCode: game.code,
-          players: game.players,
-          phase: game.phase
-        });
-      }
-    }
-
+    // Handle session registration
     socket.on('register-session', ({ clientId, gameCode, playerId, isAdmin }) => {
       console.log('Registering session:', { clientId, gameCode, playerId, isAdmin });
       
@@ -38,6 +25,9 @@ export default function setupSocketHandlers(io) {
         const game = gameManager.getGame(gameCode);
         if (game) {
           socket.join(gameCode);
+          if (playerId) {
+            socketManager.registerSocket(socket.id, gameCode, playerId);
+          }
           socket.emit('game-state', {
             gameCode: game.code,
             players: game.players,
@@ -47,6 +37,7 @@ export default function setupSocketHandlers(io) {
       }
     });
 
+    // Handle game creation
     socket.on('create-game', ({ code, maxPlayers, rooms, clientId }) => {
       try {
         if (gameManager.verifyGame(code)) {
@@ -70,6 +61,7 @@ export default function setupSocketHandlers(io) {
       }
     });
 
+    // Handle player joining
     socket.on('join-game', ({ gameCode, player, clientId }) => {
       try {
         const game = gameManager.getGame(gameCode);
@@ -90,7 +82,9 @@ export default function setupSocketHandlers(io) {
           isAdmin: false 
         });
         
+        socketManager.registerSocket(socket.id, gameCode, player.id);
         socket.join(gameCode);
+        
         socket.emit('join-game-success', { gameCode, player, players });
         io.to(gameCode).emit('players-updated', players);
         
@@ -99,21 +93,32 @@ export default function setupSocketHandlers(io) {
       }
     });
 
-
+    // Handle player removal
     socket.on('remove-player', ({ gameCode, playerId, clientId, isAdmin }) => {
       const game = gameManager.getGame(gameCode);
-      if (!game) return;
+      if (!game) {
+        socket.emit('game-error', { message: 'Game not found' });
+        return;
+      }
 
       const players = gameManager.removePlayer(gameCode, playerId);
       
       if (!isAdmin) {
         sessionManager.removeSession(clientId);
+        socketManager.unregisterSocket(socket.id);
       }
       
       socket.to(gameCode).emit('player-removed', { playerId });
       io.to(gameCode).emit('players-updated', players);
     });
 
+    // Handle game verification
+    socket.on('verify-game', ({ code }, callback) => {
+      const exists = gameManager.verifyGame(code);
+      callback({ exists });
+    });
+
+    // Handle game ending
     socket.on('end-game', ({ code }) => {
       if (gameManager.endGame(code)) {
         io.to(code).emit('game-ended');
@@ -122,8 +127,47 @@ export default function setupSocketHandlers(io) {
       }
     });
 
+    // Handle disconnection
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
+      
+      const playerInfo = socketManager.getPlayerInfo(socket.id);
+      if (playerInfo) {
+        const { gameCode, playerId } = playerInfo;
+        playerManager.handleDisconnect(gameCode, playerId, socket.id);
+        
+        // Remove socket registration but keep session
+        socketManager.unregisterSocket(socket.id);
+      }
     });
+
+    // Handle reconnection
+    socket.on('rejoin-game', ({ gameCode, playerId, clientId }) => {
+      const game = gameManager.getGame(gameCode);
+      if (!game) {
+        socket.emit('game-error', { message: 'Game not found' });
+        return;
+      }
+
+      const wasReconnected = playerManager.handleReconnect(gameCode, playerId, socket.id);
+      if (wasReconnected) {
+        socketManager.registerSocket(socket.id, gameCode, playerId);
+        socket.join(gameCode);
+        socket.emit('game-state', {
+          gameCode: game.code,
+          players: game.players,
+          phase: game.phase
+        });
+      }
+    });
+  });
+
+  // Handle player timeouts
+  playerManager.on('player-timeout', ({ gameCode, playerId }) => {
+    const players = gameManager.removePlayer(gameCode, playerId);
+    if (players.length > 0) {
+      io.to(gameCode).emit('player-removed', { playerId });
+      io.to(gameCode).emit('players-updated', players);
+    }
   });
 }
