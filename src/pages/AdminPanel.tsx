@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
@@ -15,6 +15,7 @@ import { sessionManager } from '../utils/sessionManager';
 
 export default function AdminPanel() {
   const [error, setError] = useState('');
+  const [isInitializing, setIsInitializing] = useState(true);
   const { 
     gameCode,
     setGameCode,
@@ -28,7 +29,22 @@ export default function AdminPanel() {
   // Use socket events with admin flag
   useSocketEvents(true);
 
-  if (!isConnected) {
+  useEffect(() => {
+    const session = sessionManager.getSession();
+    
+    if (isConnected && session.gameCode) {
+      console.log('Restoring admin session:', session.gameCode);
+      socketService.socket.emit('register-session', {
+        gameCode: session.gameCode,
+        clientId: sessionManager.getClientId(),
+        isAdmin: true
+      });
+      setGameCode(session.gameCode);
+    }
+    setIsInitializing(false);
+  }, [isConnected, setGameCode, socketService.socket]);
+
+  if (!isConnected || isInitializing) {
     return <LoadingSpinner />;
   }
 
@@ -47,6 +63,9 @@ export default function AdminPanel() {
       rooms,
       clientId: sessionManager.getClientId()
     });
+
+    // Save admin session
+    sessionManager.saveSession(newGameCode, null, true);
   };
 
   return (
