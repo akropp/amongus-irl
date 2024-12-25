@@ -10,7 +10,8 @@ export default class SocketService {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      timeout: 10000
+      timeout: 10000,
+      autoConnect: false // Don't connect automatically
     });
 
     this.setupErrorHandling();
@@ -24,6 +25,18 @@ export default class SocketService {
     this.socket.on('error', (error) => {
       console.error('Socket error:', error);
     });
+  }
+
+  public connect(): void {
+    if (!this.socket.connected) {
+      this.socket.connect();
+    }
+  }
+
+  public disconnect(): void {
+    if (this.socket.connected) {
+      this.socket.disconnect();
+    }
   }
 
   public isConnected(): boolean {
