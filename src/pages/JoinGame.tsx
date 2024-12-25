@@ -4,7 +4,7 @@ import { Ghost } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
-import { savePlayerSession, clearPlayerSession } from '../utils/playerSession';
+import { sessionManager } from '../utils/sessionManager';
 
 export default function JoinGame() {
   const [gameCode, setGameCode] = useState('');
@@ -12,40 +12,13 @@ export default function JoinGame() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { socketService, setGameCode: updateGameCode, addPlayer, reset } = useGameStore();
+  const { socketService, setGameCode: updateGameCode, updatePlayers, reset } = useGameStore();
   const isConnected = useSocket();
 
   useEffect(() => {
     reset();
-    clearPlayerSession();
+    sessionManager.clearSession();
   }, [reset]);
-
-  useEffect(() => {
-    const handleJoinSuccess = (data: { player: any; gameCode: string; players: any[] }) => {
-      console.log('Join success:', data);
-      updateGameCode(data.gameCode);
-      data.players.forEach(p => addPlayer(p));
-      
-      savePlayerSession(data.gameCode, data.player);
-      
-      setIsLoading(false);
-      navigate(`/lobby/${data.player.id}`);
-    };
-
-    const handleJoinError = (error: { message: string }) => {
-      console.error('Join error:', error);
-      setError(error.message);
-      setIsLoading(false);
-    };
-
-    socketService.socket.on('join-game-success', handleJoinSuccess);
-    socketService.socket.on('join-game-error', handleJoinError);
-
-    return () => {
-      socketService.socket.off('join-game-success', handleJoinSuccess);
-      socketService.socket.off('join-game-error', handleJoinError);
-    };
-  }, [socketService, navigate, updateGameCode, addPlayer]);
 
   const handleJoinGame = () => {
     setError('');
@@ -57,9 +30,9 @@ export default function JoinGame() {
       return;
     }
 
-    const normalizedInputCode = gameCode.trim().toUpperCase();
+    const normalizedCode = gameCode.trim().toUpperCase();
     
-    if (!normalizedInputCode) {
+    if (!normalizedCode) {
       setError('Please enter a game code');
       setIsLoading(false);
       return;
@@ -78,13 +51,41 @@ export default function JoinGame() {
       isAlive: true,
       tasks: []
     };
-    
-    console.log('Joining game:', { gameCode: normalizedInputCode, player: newPlayer });
+
     socketService.socket.emit('join-game', { 
-      gameCode: normalizedInputCode, 
-      player: newPlayer 
+      gameCode: normalizedCode, 
+      player: newPlayer,
+      clientId: sessionManager.getClientId()
     });
   };
+
+  useEffect(() => {
+    const handleJoinSuccess = (data) => {
+      console.log('Join success:', data);
+      updateGameCode(data.gameCode);
+      updatePlayers(data.players);
+      
+      // Save session before navigating
+      sessionManager.saveSession(data.gameCode, data.player);
+      
+      setIsLoading(false);
+      navigate(`/lobby/${data.player.id}`);
+    };
+
+    const handleJoinError = (error) => {
+      console.error('Join error:', error);
+      setError(error.message);
+      setIsLoading(false);
+    };
+
+    socketService.socket.on('join-game-success', handleJoinSuccess);
+    socketService.socket.on('game-error', handleJoinError);
+
+    return () => {
+      socketService.socket.off('join-game-success', handleJoinSuccess);
+      socketService.socket.off('game-error', handleJoinError);
+    };
+  }, [socketService.socket, navigate, updateGameCode, updatePlayers]);
 
   if (isLoading) {
     return <LoadingSpinner />;
