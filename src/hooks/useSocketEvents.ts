@@ -49,13 +49,17 @@ export function useSocketEvents() {
     };
 
     const handleGameEnded = () => {
+      console.log('Game ended, clearing session');
       sessionManager.clearSession();
       reset();
       navigate('/', { replace: true });
     };
 
     const handleError = (error) => {
-      if (error.message === 'Game not found') {
+      console.error('Game error:', error);
+      // Clear session and reset state for any game-related errors
+      if (error.message.includes('Game') || error.message.includes('game')) {
+        console.log('Game error occurred, clearing session');
         sessionManager.clearSession();
         reset();
         navigate('/', { replace: true });
