@@ -21,13 +21,20 @@ class SessionManager {
   };
 
   constructor() {
+    // Ensure client ID exists
     if (!this.getClientId()) {
       this.setClientId(crypto.randomUUID());
     }
   }
 
   getClientId(): string {
-    return sessionStorage.getItem(this.STORAGE_KEYS.CLIENT_ID) || '';
+    const id = sessionStorage.getItem(this.STORAGE_KEYS.CLIENT_ID);
+    if (!id) {
+      const newId = crypto.randomUUID();
+      this.setClientId(newId);
+      return newId;
+    }
+    return id;
   }
 
   private setClientId(id: string): void {
@@ -35,6 +42,8 @@ class SessionManager {
   }
 
   saveSession(gameCode: string, player: Player | null = null, isAdmin = false): void {
+    console.log('Saving session:', { gameCode, player, isAdmin });
+    
     localStorage.setItem(this.STORAGE_KEYS.GAME_CODE, gameCode);
     localStorage.setItem(this.STORAGE_KEYS.IS_ADMIN, String(isAdmin));
     
@@ -48,16 +57,21 @@ class SessionManager {
   }
 
   getSession(): GameSession {
-    return {
+    const session = {
       gameCode: localStorage.getItem(this.STORAGE_KEYS.GAME_CODE),
       playerId: localStorage.getItem(this.STORAGE_KEYS.PLAYER_ID),
       player: JSON.parse(localStorage.getItem(this.STORAGE_KEYS.PLAYER) || 'null'),
       phase: localStorage.getItem(this.STORAGE_KEYS.PHASE),
       isAdmin: localStorage.getItem(this.STORAGE_KEYS.IS_ADMIN) === 'true'
     };
+    
+    console.log('Retrieved session:', session);
+    return session;
   }
 
   clearSession(wasRemoved = false): void {
+    console.log('Clearing session, wasRemoved:', wasRemoved);
+    
     if (wasRemoved) {
       localStorage.setItem(this.STORAGE_KEYS.REMOVED, 'true');
     }
@@ -71,7 +85,9 @@ class SessionManager {
 
   isValidSession(): boolean {
     const session = this.getSession();
-    return session.isAdmin ? !!session.gameCode : !!(session.gameCode && session.playerId && session.player);
+    const isValid = session.isAdmin ? !!session.gameCode : !!(session.gameCode && session.playerId && session.player);
+    console.log('Session validation:', { isValid, session });
+    return isValid;
   }
 
   wasPlayerRemoved(): boolean {
