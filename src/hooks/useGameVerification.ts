@@ -1,35 +1,25 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { sessionManager } from '../utils/sessionManager';
 
 export function useGameVerification() {
   const navigate = useNavigate();
-  const { socketService, setGameCode, reset } = useGameStore();
+  const { socketService, gameCode, setGameCode, reset } = useGameStore();
 
   useEffect(() => {
     const verifyGame = () => {
-      const session = sessionManager.getSession();
-      if (!session.gameCode) return;
+      if (!gameCode) return;
 
-      console.log('🔍 Verifying game:', session.gameCode);
-      socketService.socket.emit('verify-game', { code: session.gameCode }, (response) => {
+      console.log('🔍 Verifying game:', gameCode);
+      socketService.socket.emit('verify-game', { code: gameCode }, (response) => {
         if (!response.exists) {
-          console.log('🚫 Game not found, clearing session');
-          sessionManager.clearSession();
-          setGameCode(null);
-          
-          // Redirect to appropriate page
-          if (session.isAdmin) {
-            navigate('/admin', { replace: true });
-          } else {
-            navigate('/', { replace: true });
-          }
+          console.log('🚫 Game not found, resetting state');
+          reset();
+          navigate('/', { replace: true });
         }
       });
     };
 
-    // Verify on mount and reconnection
     if (socketService.socket.connected) {
       verifyGame();
     }
@@ -37,9 +27,7 @@ export function useGameVerification() {
     socketService.socket.on('connect', verifyGame);
     socketService.socket.on('game-error', (error) => {
       if (error.message.includes('Game not found')) {
-        console.log('🚫 Game error, clearing session');
-        sessionManager.clearSession();
-        setGameCode(null);
+        console.log('🚫 Game error, resetting state');
         reset();
         navigate('/', { replace: true });
       }
@@ -49,5 +37,5 @@ export function useGameVerification() {
       socketService.socket.off('connect', verifyGame);
       socketService.socket.off('game-error');
     };
-  }, [socketService, setGameCode, reset, navigate]);
+  }, [socketService, gameCode, setGameCode, reset, navigate]);
 }
