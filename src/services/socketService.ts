@@ -8,53 +8,35 @@ export default class SocketService {
   constructor() {
     console.log('🔌 Initializing socket service');
     
-    // Initialize socket with client ID from session
+    // Create socket instance with auth
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
-      auth: { clientId: sessionManager.getClientId() }
+      auth: {
+        clientId: sessionManager.getClientId()
+      }
     });
 
     this.setupLogging();
-    this.setupEventHandlers();
     this.connect();
   }
 
   private setupLogging() {
+    // Log all incoming events
     this.socket.onAny((event, ...args) => {
-      console.log(`📥 Socket received ${event}:`, args);
+      console.log(`📥 Socket [${this.socket.id}] received ${event}:`, args);
     });
 
+    // Log all outgoing events
     const emit = this.socket.emit;
     this.socket.emit = function(event: string, ...args: any[]) {
-      console.log(`📤 Socket emitting ${event}:`, args);
+      console.log(`📤 Socket [${this.socket.id}] emitting ${event}:`, args);
       return emit.apply(this, [event, ...args]);
     };
   }
 
-  private setupEventHandlers() {
-    this.socket.on('connect', () => {
-      console.log('Socket connected, client ID:', sessionManager.getClientId());
-      
-      // Restore session on reconnect if valid
-      const session = sessionManager.getSession();
-      if (sessionManager.isValidSession()) {
-        this.socket.emit('register-session', {
-          gameCode: session.gameCode,
-          playerId: session.playerId,
-          clientId: sessionManager.getClientId(),
-          isAdmin: session.isAdmin
-        });
-      }
-    });
-
-    this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
-    });
-  }
-
   public connect() {
     if (!this.socket.connected) {
-      console.log('Connecting socket...');
+      console.log('🔌 Connecting socket with client ID:', sessionManager.getClientId());
       this.socket.connect();
     }
   }

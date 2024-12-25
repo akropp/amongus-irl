@@ -8,12 +8,14 @@ export function useSocket() {
 
   useEffect(() => {
     const handleConnect = () => {
-      console.log('Socket connected');
+      console.log('Socket connected, ID:', socketService.socket.id);
       setIsConnected(true);
 
-      // Restore session if valid
+      // Register session on connect if valid
       if (sessionManager.isValidSession()) {
         const session = sessionManager.getSession();
+        console.log('Registering session on connect:', session);
+        
         socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
           playerId: session.playerId,
@@ -33,6 +35,7 @@ export function useSocket() {
       socketService.connect();
     } else {
       setIsConnected(true);
+      handleConnect(); // Handle initial connection
     }
 
     socketService.socket.on('connect', handleConnect);
