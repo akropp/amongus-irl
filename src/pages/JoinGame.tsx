@@ -15,6 +15,7 @@ export default function JoinGame() {
   const { socketService, setGameCode: updateGameCode, updatePlayers, reset } = useGameStore();
   const isConnected = useSocket();
 
+  // Clear any existing session on mount
   useEffect(() => {
     reset();
     sessionManager.clearSession();
@@ -52,6 +53,9 @@ export default function JoinGame() {
       tasks: []
     };
 
+    // Save initial session before emitting join
+    sessionManager.saveSession(normalizedCode, newPlayer);
+
     socketService.socket.emit('join-game', { 
       gameCode: normalizedCode, 
       player: newPlayer,
@@ -67,15 +71,15 @@ export default function JoinGame() {
       updateGameCode(data.gameCode);
       updatePlayers(data.players);
       
-      // Save session before navigating
-      sessionManager.saveSession(data.gameCode, data.player);
-      
       setIsLoading(false);
+
+      // Navigate to lobby
       navigate(`/lobby/${data.player.id}`, { replace: true });
     };
 
     const handleError = (error) => {
       console.error('Join error:', error);
+      sessionManager.clearSession();
       setError(error.message);
       setIsLoading(false);
     };
