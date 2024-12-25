@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';
-import { useSocket } from '../hooks/useSocket';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { GameActions } from '../components/game/GameActions';
 import { LobbyPlayerList } from '../components/game/LobbyPlayerList';
@@ -12,33 +11,35 @@ export default function Lobby() {
   const { playerId } = useParams();
   const { players, phase, gameCode, socketService } = useGameStore();
   const navigate = useNavigate();
-  const isConnected = useSocket();
-  
+
   // Use socket events for real-time updates
   useSocketEvents();
 
-  // Handle session restoration and validation
+  // Initial session check and restoration
   useEffect(() => {
     const session = sessionManager.getSession();
     
-    // Redirect to join page if no valid session
     if (!session.gameCode || !session.playerId || !playerId) {
-      console.log('No valid session found, redirecting to join page');
+      console.log('No valid session found in Lobby');
       sessionManager.clearSession();
       navigate('/', { replace: true });
       return;
     }
 
     // Register session with server if connected
-    if (isConnected) {
-      console.log('Registering lobby session');
+    if (socketService.socket.connected) {
+      console.log('Registering lobby session:', {
+        gameCode: session.gameCode,
+        playerId: session.playerId
+      });
+      
       socketService.socket.emit('register-session', {
         gameCode: session.gameCode,
         playerId: session.playerId,
         clientId: sessionManager.getClientId()
       });
     }
-  }, [isConnected, playerId, navigate, socketService.socket]);
+  }, [playerId, navigate, socketService.socket]);
 
   // Handle game phase changes
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function Lobby() {
 
   const currentPlayer = players.find(p => p.id === playerId);
 
-  if (!isConnected || !currentPlayer || !gameCode) {
+  if (!currentPlayer || !gameCode) {
     return <LoadingSpinner />;
   }
 
