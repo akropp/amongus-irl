@@ -26,7 +26,7 @@ export default function JoinGame() {
     setIsLoading(true);
     
     if (!isConnected) {
-      setError('Not connected to server. Please try again.');
+      setError('Not connected to server');
       setIsLoading(false);
       return;
     }

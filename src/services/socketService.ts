@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
+import { sessionManager } from '../utils/sessionManager';
 
 export default class SocketService {
   public socket: Socket;
@@ -7,10 +8,12 @@ export default class SocketService {
   constructor() {
     console.log('🔌 Initializing socket service');
     
-    // Initialize socket with auto-connect disabled
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
-      autoConnect: false
+      autoConnect: false,
+      auth: {
+        clientId: sessionManager.getClientId()
+      }
     });
 
     this.setupLogging();
