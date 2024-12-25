@@ -21,17 +21,30 @@ export default function AdminPanel() {
     setGameCode,
     socketService,
     maxPlayers,
-    updatePlayers
+    updatePlayers,
+    players
   } = useGameStore();
 
   const { rooms } = useAdminStore();
   const isConnected = useSocket();
+  
+  // Use socket events for real-time updates
+  useSocketEvents();
 
   useEffect(() => {
     const handleGameCreated = (data) => {
       console.log('Game created:', data);
       setGameCode(data.code);
       updatePlayers(data.players);
+      
+      // Save admin session
+      sessionManager.saveSession(data.code, null, true);
+    };
+
+    const handleGameState = (state) => {
+      console.log('Received game state:', state);
+      setGameCode(state.gameCode);
+      updatePlayers(state.players);
     };
 
     const handleGameError = (error) => {
@@ -40,6 +53,7 @@ export default function AdminPanel() {
     };
 
     socketService.socket.on('game-created', handleGameCreated);
+    socketService.socket.on('game-state', handleGameState);
     socketService.socket.on('game-error', handleGameError);
 
     // Restore session if exists
@@ -52,6 +66,7 @@ export default function AdminPanel() {
 
     return () => {
       socketService.socket.off('game-created', handleGameCreated);
+      socketService.socket.off('game-state', handleGameState);
       socketService.socket.off('game-error', handleGameError);
     };
   }, [socketService.socket, setGameCode, updatePlayers]);
@@ -99,7 +114,7 @@ export default function AdminPanel() {
           <SabotageConfig />
         </div>
 
-        {gameCode && (
+        {gameCode && players.length > 0 && (
           <div className="mt-8">
             <PlayerManager />
           </div>
