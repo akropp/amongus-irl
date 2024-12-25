@@ -17,8 +17,7 @@ class SessionManager {
     PLAYER: `${this.STORAGE_PREFIX}player`,
     PHASE: `${this.STORAGE_PREFIX}phase`,
     IS_ADMIN: `${this.STORAGE_PREFIX}isAdmin`,
-    REMOVED: `${this.STORAGE_PREFIX}removed`,
-    LAST_PAGE: `${this.STORAGE_PREFIX}lastPage`
+    REMOVED: `${this.STORAGE_PREFIX}removed`
   };
 
   constructor() {
@@ -35,7 +34,7 @@ class SessionManager {
     sessionStorage.setItem(this.STORAGE_KEYS.CLIENT_ID, id);
   }
 
-  saveSession(gameCode: string, player: Player | null, isAdmin = false, page?: string): void {
+  saveSession(gameCode: string, player: Player | null = null, isAdmin = false): void {
     localStorage.setItem(this.STORAGE_KEYS.GAME_CODE, gameCode);
     localStorage.setItem(this.STORAGE_KEYS.IS_ADMIN, String(isAdmin));
     
@@ -45,20 +44,16 @@ class SessionManager {
     }
     
     localStorage.setItem(this.STORAGE_KEYS.PHASE, 'lobby');
-    if (page) {
-      localStorage.setItem(this.STORAGE_KEYS.LAST_PAGE, page);
-    }
     localStorage.removeItem(this.STORAGE_KEYS.REMOVED);
   }
 
-  getSession(): GameSession & { lastPage: string | null } {
+  getSession(): GameSession {
     return {
       gameCode: localStorage.getItem(this.STORAGE_KEYS.GAME_CODE),
       playerId: localStorage.getItem(this.STORAGE_KEYS.PLAYER_ID),
       player: JSON.parse(localStorage.getItem(this.STORAGE_KEYS.PLAYER) || 'null'),
       phase: localStorage.getItem(this.STORAGE_KEYS.PHASE),
-      isAdmin: localStorage.getItem(this.STORAGE_KEYS.IS_ADMIN) === 'true',
-      lastPage: localStorage.getItem(this.STORAGE_KEYS.LAST_PAGE)
+      isAdmin: localStorage.getItem(this.STORAGE_KEYS.IS_ADMIN) === 'true'
     };
   }
 
@@ -74,7 +69,7 @@ class SessionManager {
     });
   }
 
-  isValid(): boolean {
+  isValidSession(): boolean {
     const session = this.getSession();
     return session.isAdmin ? !!session.gameCode : !!(session.gameCode && session.playerId && session.player);
   }

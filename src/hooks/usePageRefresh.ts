@@ -10,13 +10,8 @@ export function usePageRefresh() {
 
   useEffect(() => {
     const handleReconnection = async () => {
-      const session = sessionManager.getSession();
-      
       // Handle admin page separately
       if (location.pathname === '/admin') {
-        if (session.isAdmin && session.gameCode) {
-          return; // Stay on admin page
-        }
         return; // Allow access to admin page
       }
 
@@ -26,12 +21,14 @@ export function usePageRefresh() {
         return;
       }
 
-      if (!session.isValid()) {
+      if (!sessionManager.isValidSession()) {
         console.log('Invalid session, redirecting to join page');
         sessionManager.clearSession();
         navigate('/', { replace: true });
         return;
       }
+
+      const session = sessionManager.getSession();
 
       // If we're connected but not in a game, try to rejoin
       if (socketService.socket.connected && !gameCode && session.gameCode) {

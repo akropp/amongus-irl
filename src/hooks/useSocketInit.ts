@@ -11,12 +11,13 @@ export function useSocketInit() {
       console.log('Socket connected');
       
       // Try to restore session
-      const session = sessionManager.getSession();
-      if (session.isValid()) {
-        socketService.socket.emit('register-player', {
+      if (sessionManager.isValidSession()) {
+        const session = sessionManager.getSession();
+        socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
           playerId: session.playerId,
-          clientId: sessionManager.getClientId()
+          clientId: sessionManager.getClientId(),
+          isAdmin: session.isAdmin
         });
       }
       
@@ -27,7 +28,7 @@ export function useSocketInit() {
       console.log('Socket disconnected');
     };
 
-    const handleGameState = (state) => {
+    const handleGameState = (state: any) => {
       console.log('Received game state:', state);
       useGameStore.getState().setGameCode(state.gameCode);
       useGameStore.getState().updatePlayers(state.players);
