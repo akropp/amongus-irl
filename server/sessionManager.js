@@ -1,6 +1,7 @@
 class SessionManager {
   constructor() {
     this.sessions = new Map();
+    this.cleanupInterval = setInterval(() => this.cleanup(), 1000 * 60 * 5);
   }
 
   saveSession(clientId, data) {
@@ -38,12 +39,23 @@ class SessionManager {
     this.sessions.delete(clientId);
   }
 
+  getGameSessions(gameCode) {
+    console.log('🔍 Getting sessions for game:', gameCode);
+    return Array.from(this.sessions.entries())
+      .filter(([_, session]) => session.gameCode === gameCode)
+      .map(([clientId, session]) => ({
+        clientId,
+        ...session
+      }));
+  }
+
   cleanup() {
     const now = Date.now();
     const timeout = 1000 * 60 * 30; // 30 minutes
     
     for (const [clientId, session] of this.sessions.entries()) {
       if (now - session.lastActive > timeout) {
+        console.log('🧹 Cleaning up expired session:', clientId);
         this.sessions.delete(clientId);
       }
     }

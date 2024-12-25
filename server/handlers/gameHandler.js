@@ -13,6 +13,10 @@ export function handleGameEvents(io, socket) {
     console.log('🎮 Creating game:', { code, maxPlayers, rooms, clientId });
     
     try {
+      if (gameManager.verifyGame(code)) {
+        throw new Error('Game already exists');
+      }
+
       const game = gameManager.createGame(code, maxPlayers, rooms);
       
       if (sessionManager.saveSession(clientId, { 
@@ -32,10 +36,22 @@ export function handleGameEvents(io, socket) {
   });
 
   socket.on('end-game', ({ code }) => {
+    console.log('🏁 Ending game:', code);
     if (gameManager.endGame(code)) {
-      io.to(code).emit('game-ended');
+      // Get all sessions for this game before ending it
       const sessions = sessionManager.getGameSessions(code);
-      sessions.forEach(s => sessionManager.removeSession(s.clientId));
+      console.log('📤 Notifying players and cleaning up sessions');
+      
+      // Notify all players in the game room
+      io.to(code).emit('game-ended');
+      
+      // Clean up sessions
+      sessions.forEach(session => {
+        sessionManager.removeSession(session.clientId);
+        if (session.socketId) {
+          socketManager.unregisterSocket(session.socketId);
+        }
+      });
     }
   });
 }
