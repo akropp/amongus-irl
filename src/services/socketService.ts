@@ -12,31 +12,42 @@ export default class SocketService {
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
       auth: {
-        clientId: sessionManager.getClientId()
+        clientId: sessionManager.getClientId(),
+        session: sessionManager.getSession()
       }
     });
 
     this.setupLogging();
-    this.connect();
+    this.setupReconnection();
   }
 
   private setupLogging() {
-    // Log all incoming events
     this.socket.onAny((event, ...args) => {
       console.log(`📥 Socket [${this.socket.id}] received ${event}:`, args);
     });
+  }
 
-    // Log all outgoing events
-    const emit = this.socket.emit;
-    this.socket.emit = function(event: string, ...args: any[]) {
-      console.log(`📤 Socket [${this.socket.id}] emitting ${event}:`, args);
-      return emit.apply(this, [event, ...args]);
-    };
+  private setupReconnection() {
+    this.socket.on('connect', () => {
+      console.log('Socket connected, registering session...');
+      const session = sessionManager.getSession();
+      
+      if (sessionManager.isValidSession()) {
+        this.socket.emit('register-session', {
+          clientId: sessionManager.getClientId(),
+          ...session
+        });
+      }
+    });
+
+    this.socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
   }
 
   public connect() {
     if (!this.socket.connected) {
-      console.log('🔌 Connecting socket with client ID:', sessionManager.getClientId());
+      console.log('Connecting socket...');
       this.socket.connect();
     }
   }
