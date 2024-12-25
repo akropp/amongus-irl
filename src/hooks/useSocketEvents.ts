@@ -16,6 +16,7 @@ export function useSocketEvents() {
         console.log('Restoring session:', session);
         setGameCode(session.gameCode);
         
+        // Register session with server
         socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
           playerId: session.playerId,
@@ -31,7 +32,7 @@ export function useSocketEvents() {
         setGameCode(state.gameCode);
         updatePlayers(state.players || []);
 
-        // If we're not on the correct page, navigate
+        // Navigate to correct page if needed
         const session = sessionManager.getSession();
         if (session.playerId && !window.location.pathname.includes(session.playerId)) {
           navigate(`/lobby/${session.playerId}`, { replace: true });
@@ -41,7 +42,22 @@ export function useSocketEvents() {
 
     const handlePlayersUpdate = (players) => {
       console.log('Players updated:', players);
-      updatePlayers(players);
+      const session = sessionManager.getSession();
+      
+      // Only update if we're in a game
+      if (session.gameCode) {
+        updatePlayers(players);
+        
+        // Check if our player is still in the game
+        if (session.playerId && !players.some(p => p.id === session.playerId)) {
+          if (!sessionManager.wasPlayerRemoved()) {
+            console.log('Player no longer in game, redirecting');
+            sessionManager.clearSession();
+            reset();
+            navigate('/', { replace: true });
+          }
+        }
+      }
     };
 
     const handlePlayerRemoved = ({ playerId }) => {
@@ -71,6 +87,7 @@ export function useSocketEvents() {
       }
     };
 
+    // Set up event listeners
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('game-state', handleGameState);
     socketService.socket.on('players-updated', handlePlayersUpdate);

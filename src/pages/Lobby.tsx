@@ -15,7 +15,7 @@ export default function Lobby() {
   // Use socket events for real-time updates
   useSocketEvents();
 
-  // Initial session check and restoration
+  // Initial session check
   useEffect(() => {
     const session = sessionManager.getSession();
     
@@ -26,17 +26,22 @@ export default function Lobby() {
       return;
     }
 
+    // Verify we're in the correct game
+    if (session.playerId !== playerId) {
+      console.log('Session mismatch, redirecting');
+      sessionManager.clearSession();
+      navigate('/', { replace: true });
+      return;
+    }
+
     // Register session with server if connected
     if (socketService.socket.connected) {
-      console.log('Registering lobby session:', {
-        gameCode: session.gameCode,
-        playerId: session.playerId
-      });
-      
+      console.log('Registering lobby session');
       socketService.socket.emit('register-session', {
         gameCode: session.gameCode,
         playerId: session.playerId,
-        clientId: sessionManager.getClientId()
+        clientId: sessionManager.getClientId(),
+        isAdmin: false
       });
     }
   }, [playerId, navigate, socketService.socket]);
