@@ -8,31 +8,29 @@ export default class SocketService {
   constructor() {
     console.log('🔌 Initializing socket service');
     
-    // Create socket instance with auth
+    // Create socket with auth
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
       auth: {
-        clientId: sessionManager.getClientId(),
-        session: sessionManager.getSession()
+        clientId: sessionManager.getClientId()
       }
     });
 
-    this.setupLogging();
-    this.setupReconnection();
+    this.setupHandlers();
   }
 
-  private setupLogging() {
-    this.socket.onAny((event, ...args) => {
-      console.log(`📥 Socket [${this.socket.id}] received ${event}:`, args);
-    });
-  }
-
-  private setupReconnection() {
+  private setupHandlers() {
     this.socket.on('connect', () => {
-      console.log('Socket connected, registering session...');
-      const session = sessionManager.getSession();
+      console.log('Socket connected:', this.socket.id);
       
-      if (sessionManager.isValidSession()) {
+      // Register session on connect if valid
+      const session = sessionManager.getSession();
+      if (session.gameCode) {
+        console.log('Registering session on connect:', {
+          clientId: sessionManager.getClientId(),
+          ...session
+        });
+        
         this.socket.emit('register-session', {
           clientId: sessionManager.getClientId(),
           ...session
@@ -47,7 +45,6 @@ export default class SocketService {
 
   public connect() {
     if (!this.socket.connected) {
-      console.log('Connecting socket...');
       this.socket.connect();
     }
   }
@@ -56,9 +53,5 @@ export default class SocketService {
     if (this.socket.connected) {
       this.socket.disconnect();
     }
-  }
-
-  public isConnected(): boolean {
-    return this.socket.connected;
   }
 }

@@ -15,7 +15,6 @@ export default function JoinGame() {
   const { socketService, setGameCode: updateGameCode, updatePlayers, reset } = useGameStore();
   const isConnected = useSocket();
 
-  // Clear any existing session on mount
   useEffect(() => {
     reset();
     sessionManager.clearSession();
@@ -33,14 +32,8 @@ export default function JoinGame() {
 
     const normalizedCode = gameCode.trim().toUpperCase();
     
-    if (!normalizedCode) {
-      setError('Please enter a game code');
-      setIsLoading(false);
-      return;
-    }
-
-    if (!playerName.trim()) {
-      setError('Please enter your name');
+    if (!normalizedCode || !playerName.trim()) {
+      setError('Please enter both game code and name');
       setIsLoading(false);
       return;
     }
@@ -53,12 +46,13 @@ export default function JoinGame() {
       tasks: []
     };
 
-    // Save initial session before emitting join
+    // Save session before joining
     sessionManager.saveSession(normalizedCode, newPlayer);
+    
+    // Update store and emit join
     updateGameCode(normalizedCode);
-
-    socketService.socket.emit('join-game', { 
-      gameCode: normalizedCode, 
+    socketService.socket.emit('join-game', {
+      gameCode: normalizedCode,
       player: newPlayer,
       clientId: sessionManager.getClientId()
     });
@@ -67,17 +61,9 @@ export default function JoinGame() {
   useEffect(() => {
     const handleJoinSuccess = (data) => {
       console.log('Join success:', data);
-      
-      // Update store state
       updateGameCode(data.gameCode);
       updatePlayers(data.players);
-      
-      // Update session with confirmed data
-      sessionManager.saveSession(data.gameCode, data.player);
-      
       setIsLoading(false);
-
-      // Navigate to lobby with replace to prevent back navigation
       navigate(`/lobby/${data.player.id}`, { replace: true });
     };
 
@@ -97,4 +83,4 @@ export default function JoinGame() {
     };
   }, [socketService.socket, navigate, updateGameCode, updatePlayers]);
 
-  // Rest of the component remains the same...
+  // Rest of component remains the same...
