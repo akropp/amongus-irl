@@ -4,32 +4,19 @@ import sessionManager from './sessionManager.js';
 export default function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log('🔌 Client connected:', socket.id);
-    
-    // Log all incoming events
-    socket.onAny((eventName, ...args) => {
-      console.log(`📥 Received '${eventName}':`, args);
-    });
 
-    // Log all outgoing events
-    const emit = socket.emit;
-    socket.emit = function(eventName, ...args) {
-      console.log(`📤 Emitting '${eventName}':`, args);
-      return emit.apply(this, [eventName, ...args]);
-    };
+    // Debug middleware for all events
+    socket.onAny((event, ...args) => {
+      console.log(`📥 [${socket.id}] Received ${event}:`, args);
+    });
 
     socket.on('create-game', ({ code, maxPlayers, rooms, clientId }) => {
       console.log('🎮 Creating game:', { code, maxPlayers, rooms, clientId });
       
       try {
-        if (gameManager.verifyGame(code)) {
-          console.log('❌ Game already exists:', code);
-          socket.emit('game-error', { message: 'Game already exists' });
-          return;
-        }
-        
         const game = gameManager.createGame(code, maxPlayers, rooms);
-        console.log('✅ Game created:', game);
         
+        // Save admin session
         sessionManager.saveSession(clientId, { 
           gameCode: code,
           socketId: socket.id,
@@ -37,14 +24,8 @@ export default function setupSocketHandlers(io) {
         });
         
         socket.join(code);
-        console.log('👥 Socket joined room:', code);
-        
-        socket.emit('game-created', { 
-          code,
-          maxPlayers,
-          rooms,
-          players: []
-        });
+        socket.emit('game-created', { code, maxPlayers, rooms, players: [] });
+        console.log('✅ Game created:', code);
         
       } catch (error) {
         console.error('❌ Error creating game:', error);
@@ -53,26 +34,17 @@ export default function setupSocketHandlers(io) {
     });
 
     socket.on('join-game', ({ gameCode, player, clientId }) => {
-      console.log('🎮 Join game attempt:', { gameCode, player, clientId });
+      console.log('👤 Join attempt:', { gameCode, player: player.name, clientId });
       
       try {
         const game = gameManager.getGame(gameCode);
-        
         if (!game) {
-          console.log('❌ Game not found:', gameCode);
-          socket.emit('game-error', { message: 'Game not found' });
-          return;
-        }
-
-        if (game.players.length >= game.maxPlayers) {
-          console.log('❌ Game is full:', gameCode);
-          socket.emit('game-error', { message: 'Game is full' });
-          return;
+          throw new Error('Game not found');
         }
 
         const players = gameManager.addPlayer(gameCode, player);
-        console.log('✅ Player added:', player);
         
+        // Save player session
         sessionManager.saveSession(clientId, {
           gameCode,
           playerId: player.id,
@@ -80,24 +52,56 @@ export default function setupSocketHandlers(io) {
         });
         
         socket.join(gameCode);
-        console.log('👥 Socket joined room:', gameCode);
-
-        socket.emit('join-game-success', { 
-          gameCode,
-          player,
-          players
-        });
-
+        
+        // Send success to joining player
+        socket.emit('join-game-success', { gameCode, player, players });
+        
+        // Broadcast updated player list to all in game
         io.to(gameCode).emit('players-updated', players);
         
+        console.log('✅ Player joined:', player.name);
+        
       } catch (error) {
-        console.error('❌ Error joining game:', error);
+        console.error('❌ Join error:', error);
         socket.emit('game-error', { message: error.message });
       }
     });
 
-    socket.on('disconnect', (reason) => {
-      console.log('🔌 Client disconnected:', socket.id, 'Reason:', reason);
+    socket.on('register-session', ({ gameCode, playerId, clientId, isAdmin }) => {
+      console.log('🔄 Session registration:', { gameCode, playerId, clientId, isAdmin });
+      
+      try {
+        const game = gameManager.getGame(gameCode);
+        if (!game) {
+          throw new Error('Game not found');
+        }
+
+        socket.join(gameCode);
+        
+        sessionManager.saveSession(clientId, {
+          gameCode,
+          playerId,
+          socketId: socket.id,
+          isAdmin
+        });
+
+        // Send current game state
+        socket.emit('game-state', {
+          gameCode,
+          players: game.players,
+          phase: game.phase
+        });
+        
+        console.log('✅ Session registered');
+        
+      } catch (error) {
+        console.error('❌ Registration error:', error);
+        socket.emit('game-error', { message: error.message });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('🔌 Client disconnected:', socket.id);
     });
   });
 }

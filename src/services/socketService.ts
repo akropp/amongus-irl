@@ -3,75 +3,67 @@ import { SERVER_URL, SOCKET_OPTIONS } from '../config/constants';
 
 export default class SocketService {
   public socket: Socket;
+  private connected: boolean = false;
 
   constructor() {
-    console.log('🔌 Initializing socket service with URL:', SERVER_URL);
+    console.log('🔌 Initializing socket service');
     
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      timeout: 10000,
       autoConnect: false
     });
 
     this.setupLogging();
-    this.setupErrorHandling();
+    this.setupHandlers();
   }
 
   private setupLogging() {
-    // Log all emitted events
-    const emit = this.socket.emit;
-    this.socket.emit = function(eventName: string, ...args: any[]) {
-      console.log(`📤 Emitting '${eventName}':`, args);
-      return emit.apply(this, [eventName, ...args]);
-    };
-
-    // Log all received events
-    this.socket.onAny((eventName: string, ...args: any[]) => {
-      console.log(`📥 Received '${eventName}':`, args);
+    // Log all events
+    this.socket.onAny((event, ...args) => {
+      console.log(`📥 Received ${event}:`, args);
     });
 
-    // Connection state logging
+    const emit = this.socket.emit;
+    this.socket.emit = function(event: string, ...args: any[]) {
+      console.log(`📤 Emitting ${event}:`, args);
+      return emit.apply(this, [event, ...args]);
+    };
+  }
+
+  private setupHandlers() {
     this.socket.on('connect', () => {
-      console.log('✅ Socket connected');
+      console.log('✅ Socket connected:', this.socket.id);
+      this.connected = true;
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('❌ Socket disconnected:', reason);
+      this.connected = false;
     });
 
-    this.socket.on('reconnect_attempt', (attempt) => {
-      console.log('🔄 Socket reconnection attempt:', attempt);
-    });
-  }
-
-  private setupErrorHandling() {
     this.socket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
-    });
-
-    this.socket.on('error', (error) => {
-      console.error('❌ Socket error:', error);
+      console.error('❌ Connection error:', error);
     });
   }
 
   public connect(): void {
-    if (!this.socket.connected) {
+    if (!this.connected) {
       console.log('🔌 Connecting socket...');
       this.socket.connect();
     }
   }
 
   public disconnect(): void {
-    if (this.socket.connected) {
+    if (this.connected) {
       console.log('🔌 Disconnecting socket...');
       this.socket.disconnect();
     }
   }
 
   public isConnected(): boolean {
-    return this.socket.connected;
+    return this.connected;
   }
 }
