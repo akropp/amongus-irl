@@ -8,13 +8,12 @@ export function useSocket() {
 
   useEffect(() => {
     const handleConnect = () => {
-      console.log('Socket connected');
-      
-      // Restore session on connect
+      console.log('🔌 Socket connected');
+      setIsConnected(true);
+
+      // Restore session if valid
       if (sessionManager.isValidSession()) {
         const session = sessionManager.getSession();
-        console.log('Restoring session:', session);
-        
         socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
           playerId: session.playerId,
@@ -22,22 +21,15 @@ export function useSocket() {
           isAdmin: session.isAdmin
         });
       }
-      
-      setIsConnected(true);
     };
-    
+
     const handleDisconnect = () => {
-      console.log('Socket disconnected');
+      console.log('🔌 Socket disconnected');
       setIsConnected(false);
     };
 
-    // Connect socket if not already connected
-    if (!socketService.isConnected()) {
-      socketService.connect();
-    } else {
-      setIsConnected(true);
-      handleConnect(); // Restore session if already connected
-    }
+    // Set initial state
+    setIsConnected(socketService.socket.connected);
 
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('disconnect', handleDisconnect);
