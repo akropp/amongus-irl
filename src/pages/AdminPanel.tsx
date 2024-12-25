@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useGameSettings } from '../store/gameSettingsStore';
 import { useAdminStore } from '../store/adminStore';
 import HomeAssistantSetup from '../components/admin/HomeAssistantSetup';
 import RoomManager from '../components/admin/RoomManager';
@@ -20,15 +21,13 @@ export default function AdminPanel() {
     gameCode,
     setGameCode,
     socketService,
-    maxPlayers,
     updatePlayers,
     players
   } = useGameStore();
 
-  const { rooms } = useAdminStore();
+  const { maxPlayers, rooms } = useGameSettings();
   const isConnected = useSocket();
   
-  // Use socket events for real-time updates
   useSocketEvents();
 
   useEffect(() => {
@@ -36,8 +35,6 @@ export default function AdminPanel() {
       console.log('Game created:', data);
       setGameCode(data.code);
       updatePlayers(data.players);
-      
-      // Save admin session
       sessionManager.saveSession(data.code, null, true);
     };
 
@@ -50,17 +47,14 @@ export default function AdminPanel() {
     const handleGameError = (error) => {
       console.error('Game error:', error);
       setError(error.message);
+      if (error.message.includes('Game not found')) {
+        setGameCode(null);
+      }
     };
 
     socketService.socket.on('game-created', handleGameCreated);
     socketService.socket.on('game-state', handleGameState);
     socketService.socket.on('game-error', handleGameError);
-
-    // Restore session if exists
-    const session = sessionManager.getSession();
-    if (session.isAdmin && session.gameCode) {
-      setGameCode(session.gameCode);
-    }
 
     setIsInitializing(false);
 
@@ -122,4 +116,3 @@ export default function AdminPanel() {
       </div>
     </div>
   );
-}
