@@ -62,6 +62,8 @@ export default function JoinGame() {
   useEffect(() => {
     const handleJoinSuccess = (data) => {
       console.log('Join success:', data);
+      
+      // Update store state
       updateGameCode(data.gameCode);
       updatePlayers(data.players);
       
@@ -69,21 +71,21 @@ export default function JoinGame() {
       sessionManager.saveSession(data.gameCode, data.player);
       
       setIsLoading(false);
-      navigate(`/lobby/${data.player.id}`);
+      navigate(`/lobby/${data.player.id}`, { replace: true });
     };
 
-    const handleJoinError = (error) => {
+    const handleError = (error) => {
       console.error('Join error:', error);
       setError(error.message);
       setIsLoading(false);
     };
 
     socketService.socket.on('join-game-success', handleJoinSuccess);
-    socketService.socket.on('game-error', handleJoinError);
+    socketService.socket.on('game-error', handleError);
 
     return () => {
       socketService.socket.off('join-game-success', handleJoinSuccess);
-      socketService.socket.off('game-error', handleJoinError);
+      socketService.socket.off('game-error', handleError);
     };
   }, [socketService.socket, navigate, updateGameCode, updatePlayers]);
 

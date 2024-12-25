@@ -6,15 +6,13 @@ import SocketService from '../services/socketService';
 interface GameStore extends GameState {
   socketService: SocketService;
   setGameCode: (code: string | null) => void;
-  addPlayer: (player: Player) => void;
-  removePlayer: (playerId: string) => void;
   updatePlayers: (players: Player[]) => void;
   setMaxPlayers: (count: number) => void;
   setPhase: (phase: GameState['phase']) => void;
   reset: () => void;
 }
 
-const initialState: Omit<GameStore, 'socketService' | 'setGameCode' | 'addPlayer' | 'removePlayer' | 'updatePlayers' | 'setMaxPlayers' | 'setPhase' | 'reset'> = {
+const initialState: Omit<GameStore, 'socketService' | 'setGameCode' | 'updatePlayers' | 'setMaxPlayers' | 'setPhase' | 'reset'> = {
   gameCode: null,
   players: [],
   maxPlayers: 15,
@@ -29,28 +27,26 @@ const socketService = new SocketService();
 
 export const useGameStore = create<GameStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
       socketService,
 
       setGameCode: (code) => {
-        set({ gameCode: code ? code.toUpperCase() : null });
+        const normalizedCode = code ? code.toUpperCase() : null;
+        set({ gameCode: normalizedCode });
+        
+        // Update session if code changes
+        if (normalizedCode) {
+          const session = get().socketService.socket.auth || {};
+          get().socketService.socket.auth = {
+            ...session,
+            gameCode: normalizedCode
+          };
+        }
       },
       
-      addPlayer: (player) => {
-        set(state => ({
-          players: state.players.some(p => p.id === player.id)
-            ? state.players.map(p => p.id === player.id ? player : p)
-            : [...state.players, player]
-        }));
-      },
-      
-      updatePlayers: (players) => set({ players }),
-      
-      removePlayer: (playerId) => {
-        set(state => ({
-          players: state.players.filter(p => p.id !== playerId)
-        }));
+      updatePlayers: (players) => {
+        set({ players });
       },
       
       setMaxPlayers: (count) => set({ maxPlayers: count }),
@@ -58,7 +54,10 @@ export const useGameStore = create<GameStore>()(
       setPhase: (phase) => set({ phase }),
       
       reset: () => {
-        set(initialState);
+        set(state => ({
+          ...initialState,
+          socketService: state.socketService
+        }));
       }
     }),
     {
