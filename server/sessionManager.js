@@ -1,10 +1,11 @@
 class SessionManager {
   constructor() {
     this.sessions = new Map();
-    this.cleanupInterval = setInterval(() => this.cleanup(), 1000 * 60 * 5); // Every 5 minutes
+    this.cleanupInterval = setInterval(() => this.cleanup(), 1000 * 60 * 5);
   }
 
   saveSession(clientId, data) {
+    console.log('Saving session:', { clientId, data });
     this.sessions.set(clientId, {
       ...data,
       lastActive: Date.now()
@@ -36,8 +37,14 @@ class SessionManager {
   }
 
   getGameSessions(gameCode) {
+    return Array.from(this.sessions.entries())
+      .filter(([_, session]) => session.gameCode === gameCode)
+      .map(([clientId, session]) => ({ clientId, ...session }));
+  }
+
+  isPlayerInGame(gameCode, playerId) {
     return Array.from(this.sessions.values())
-      .filter(session => session.gameCode === gameCode);
+      .some(session => session.gameCode === gameCode && session.playerId === playerId);
   }
 }
 

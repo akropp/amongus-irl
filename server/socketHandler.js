@@ -19,22 +19,24 @@ export default function setupSocketHandlers(io) {
     socket.on('register-session', ({ clientId, gameCode, playerId, isAdmin }) => {
       console.log('Registering session:', { clientId, gameCode, playerId, isAdmin });
       
+      const game = gameManager.getGame(gameCode);
+      if (!game) {
+        socket.emit('game-error', { message: 'Game not found' });
+        return;
+      }
+
       sessionManager.saveSession(clientId, { gameCode, playerId, isAdmin });
       
-      if (gameCode) {
-        const game = gameManager.getGame(gameCode);
-        if (game) {
-          socket.join(gameCode);
-          if (playerId) {
-            socketManager.registerSocket(socket.id, gameCode, playerId);
-          }
-          socket.emit('game-state', {
-            gameCode: game.code,
-            players: game.players,
-            phase: game.phase
-          });
-        }
+      socket.join(gameCode);
+      if (playerId) {
+        socketManager.registerSocket(socket.id, gameCode, playerId);
       }
+
+      socket.emit('game-state', {
+        gameCode: game.code,
+        players: game.players,
+        phase: game.phase
+      });
     });
 
     // Handle game creation

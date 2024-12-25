@@ -12,9 +12,10 @@ export default function JoinGame() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { socketService, setGameCode: updateGameCode, updatePlayers, reset } = useGameStore();
+  const { socketService, reset } = useGameStore();
   const isConnected = useSocket();
 
+  // Clear any existing session on mount
   useEffect(() => {
     reset();
     sessionManager.clearSession();
@@ -31,8 +32,9 @@ export default function JoinGame() {
     }
 
     const normalizedCode = gameCode.trim().toUpperCase();
+    const trimmedName = playerName.trim();
     
-    if (!normalizedCode || !playerName.trim()) {
+    if (!normalizedCode || !trimmedName) {
       setError('Please enter both game code and name');
       setIsLoading(false);
       return;
@@ -40,17 +42,16 @@ export default function JoinGame() {
 
     const newPlayer = {
       id: Math.random().toString(36).substring(2),
-      name: playerName.trim(),
+      name: trimmedName,
       role: 'unassigned',
       isAlive: true,
       tasks: []
     };
 
-    // Save session before joining
+    // Save initial session
     sessionManager.saveSession(normalizedCode, newPlayer);
     
-    // Update store and emit join
-    updateGameCode(normalizedCode);
+    // Emit join event
     socketService.socket.emit('join-game', {
       gameCode: normalizedCode,
       player: newPlayer,
@@ -58,11 +59,14 @@ export default function JoinGame() {
     });
   };
 
+  // Handle socket events
   useEffect(() => {
     const handleJoinSuccess = (data) => {
       console.log('Join success:', data);
-      updateGameCode(data.gameCode);
-      updatePlayers(data.players);
+      
+      // Update session with confirmed data
+      sessionManager.saveSession(data.gameCode, data.player);
+      
       setIsLoading(false);
       navigate(`/lobby/${data.player.id}`, { replace: true });
     };
@@ -81,7 +85,7 @@ export default function JoinGame() {
       socketService.socket.off('join-game-success', handleJoinSuccess);
       socketService.socket.off('game-error', handleError);
     };
-  }, [socketService.socket, navigate, updateGameCode, updatePlayers]);
+  }, [socketService.socket, navigate]);
 
   if (isLoading) {
     return <LoadingSpinner />;
