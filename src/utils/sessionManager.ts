@@ -18,11 +18,11 @@ class SessionManager {
   }
 
   private getOrCreateClientId(): string {
-    const stored = localStorage.getItem(`${this.PREFIX}clientId`);
+    const stored = sessionStorage.getItem(`${this.PREFIX}clientId`);
     if (stored) return stored;
     
     const newId = crypto.randomUUID();
-    localStorage.setItem(`${this.PREFIX}clientId`, newId);
+    sessionStorage.setItem(`${this.PREFIX}clientId`, newId);
     return newId;
   }
 
@@ -41,11 +41,11 @@ class SessionManager {
     };
 
     console.log('Saving session:', data);
-    localStorage.setItem(`${this.PREFIX}session`, JSON.stringify(data));
+    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify(data));
   }
 
   public getSession(): GameSession {
-    const stored = localStorage.getItem(`${this.PREFIX}session`);
+    const stored = sessionStorage.getItem(`${this.PREFIX}session`);
     if (!stored) {
       return {
         gameCode: null,
@@ -69,7 +69,7 @@ class SessionManager {
       wasRemoved
     };
     console.log('Clearing session, wasRemoved:', wasRemoved);
-    localStorage.setItem(`${this.PREFIX}session`, JSON.stringify(updatedSession));
+    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify(updatedSession));
   }
 
   public wasPlayerRemoved(): boolean {

@@ -14,11 +14,8 @@ export function useSocketEvents() {
       
       if (sessionManager.isValidSession()) {
         console.log('Restoring session:', session);
-        
-        // Set game code first to ensure store is updated
         setGameCode(session.gameCode);
         
-        // Register session with server
         socketService.socket.emit('register-session', {
           gameCode: session.gameCode,
           playerId: session.playerId,
@@ -33,6 +30,12 @@ export function useSocketEvents() {
       if (state.gameCode) {
         setGameCode(state.gameCode);
         updatePlayers(state.players || []);
+
+        // If we're not on the correct page, navigate
+        const session = sessionManager.getSession();
+        if (session.playerId && !window.location.pathname.includes(session.playerId)) {
+          navigate(`/lobby/${session.playerId}`, { replace: true });
+        }
       }
     };
 
