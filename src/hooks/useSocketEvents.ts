@@ -8,62 +8,39 @@ export function useSocketEvents() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleConnect = () => {
-      console.log('Socket connected, checking session');
-      const session = sessionManager.getSession();
-      
-      if (sessionManager.isValidSession()) {
-        console.log('Restoring session:', session);
-        setGameCode(session.gameCode);
-        
-        // Register session with server
-        socketService.socket.emit('register-session', {
-          gameCode: session.gameCode,
-          playerId: session.playerId,
-          clientId: sessionManager.getClientId(),
-          isAdmin: session.isAdmin
-        });
-      }
-    };
-
     const handleGameState = (state) => {
       console.log('Received game state:', state);
-      if (state.gameCode) {
-        setGameCode(state.gameCode);
-        updatePlayers(state.players || []);
+      setGameCode(state.gameCode);
+      updatePlayers(state.players || []);
 
-        // Navigate to correct page if needed
-        const session = sessionManager.getSession();
-        if (session.playerId && !window.location.pathname.includes(session.playerId)) {
-          navigate(`/lobby/${session.playerId}`, { replace: true });
+      // Navigate to correct page based on session
+      const session = sessionManager.getSession();
+      if (session.isAdmin) {
+        if (!window.location.pathname.includes('admin')) {
+          navigate('/admin', { replace: true });
         }
+      } else if (session.playerId && !window.location.pathname.includes(session.playerId)) {
+        navigate(`/lobby/${session.playerId}`, { replace: true });
       }
     };
 
     const handlePlayersUpdate = (players) => {
       console.log('Players updated:', players);
-      const session = sessionManager.getSession();
+      updatePlayers(players);
       
-      // Only update if we're in a game
-      if (session.gameCode) {
-        updatePlayers(players);
-        
-        // Check if our player is still in the game
-        if (session.playerId && !players.some(p => p.id === session.playerId)) {
-          if (!sessionManager.wasPlayerRemoved()) {
-            console.log('Player no longer in game, redirecting');
-            sessionManager.clearSession();
-            reset();
-            navigate('/', { replace: true });
-          }
+      // Verify player still in game
+      const session = sessionManager.getSession();
+      if (session.playerId && !players.some(p => p.id === session.playerId)) {
+        if (!sessionManager.wasPlayerRemoved()) {
+          sessionManager.clearSession();
+          reset();
+          navigate('/', { replace: true });
         }
       }
     };
 
     const handlePlayerRemoved = ({ playerId }) => {
-      console.log('Player removed:', playerId);
       const session = sessionManager.getSession();
-      
       if (session.playerId === playerId) {
         sessionManager.clearSession(true);
         reset();
@@ -72,14 +49,12 @@ export function useSocketEvents() {
     };
 
     const handleGameEnded = () => {
-      console.log('Game ended');
       sessionManager.clearSession();
       reset();
       navigate('/', { replace: true });
     };
 
     const handleError = (error) => {
-      console.error('Socket error:', error);
       if (error.message === 'Game not found') {
         sessionManager.clearSession();
         reset();
@@ -88,20 +63,13 @@ export function useSocketEvents() {
     };
 
     // Set up event listeners
-    socketService.socket.on('connect', handleConnect);
     socketService.socket.on('game-state', handleGameState);
     socketService.socket.on('players-updated', handlePlayersUpdate);
     socketService.socket.on('player-removed', handlePlayerRemoved);
     socketService.socket.on('game-ended', handleGameEnded);
     socketService.socket.on('game-error', handleError);
 
-    // Initial connection check
-    if (socketService.socket.connected) {
-      handleConnect();
-    }
-
     return () => {
-      socketService.socket.off('connect', handleConnect);
       socketService.socket.off('game-state', handleGameState);
       socketService.socket.off('players-updated', handlePlayersUpdate);
       socketService.socket.off('player-removed', handlePlayerRemoved);

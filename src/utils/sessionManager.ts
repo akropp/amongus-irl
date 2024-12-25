@@ -14,6 +14,7 @@ class SessionManager {
   private readonly clientId: string;
 
   constructor() {
+    // Create or retrieve persistent client ID
     this.clientId = this.getOrCreateClientId();
   }
 
@@ -31,7 +32,7 @@ class SessionManager {
   }
 
   public saveSession(gameCode: string, player: Player | null = null, isAdmin = false): void {
-    const data: GameSession = {
+    const session: GameSession = {
       gameCode,
       playerId: player?.id || null,
       player,
@@ -40,8 +41,8 @@ class SessionManager {
       wasRemoved: false
     };
 
-    console.log('Saving session:', data);
-    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify(data));
+    console.log('Saving session:', session);
+    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify(session));
   }
 
   public getSession(): GameSession {
@@ -57,36 +58,28 @@ class SessionManager {
       };
     }
 
-    const session = JSON.parse(stored);
-    console.log('Retrieved session:', session);
-    return session;
+    return JSON.parse(stored);
   }
 
   public clearSession(wasRemoved = false): void {
     const session = this.getSession();
-    const updatedSession: GameSession = {
+    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify({
       ...session,
       wasRemoved
-    };
-    console.log('Clearing session, wasRemoved:', wasRemoved);
-    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify(updatedSession));
+    }));
   }
 
   public wasPlayerRemoved(): boolean {
-    const session = this.getSession();
-    return session.wasRemoved || false;
+    return this.getSession().wasRemoved || false;
   }
 
   public isValidSession(): boolean {
     const session = this.getSession();
     if (session.wasRemoved) return false;
     
-    const isValid = session.isAdmin ? 
+    return session.isAdmin ? 
       !!session.gameCode : 
       !!(session.gameCode && session.playerId && session.player);
-    
-    console.log('Session validation:', { isValid, session });
-    return isValid;
   }
 }
 
