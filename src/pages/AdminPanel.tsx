@@ -20,29 +20,41 @@ export default function AdminPanel() {
     gameCode,
     setGameCode,
     socketService,
-    maxPlayers
+    maxPlayers,
+    updatePlayers
   } = useGameStore();
 
   const { rooms } = useAdminStore();
   const isConnected = useSocket();
-  
-  // Use socket events with admin flag
-  useSocketEvents(true);
 
   useEffect(() => {
+    const handleGameCreated = (data) => {
+      console.log('Game created:', data);
+      setGameCode(data.code);
+      updatePlayers(data.players);
+    };
+
+    const handleGameError = (error) => {
+      console.error('Game error:', error);
+      setError(error.message);
+    };
+
+    socketService.socket.on('game-created', handleGameCreated);
+    socketService.socket.on('game-error', handleGameError);
+
+    // Restore session if exists
     const session = sessionManager.getSession();
-    
-    if (isConnected && session.gameCode) {
-      console.log('Restoring admin session:', session.gameCode);
-      socketService.socket.emit('register-session', {
-        gameCode: session.gameCode,
-        clientId: sessionManager.getClientId(),
-        isAdmin: true
-      });
+    if (session.isAdmin && session.gameCode) {
       setGameCode(session.gameCode);
     }
+
     setIsInitializing(false);
-  }, [isConnected, setGameCode, socketService.socket]);
+
+    return () => {
+      socketService.socket.off('game-created', handleGameCreated);
+      socketService.socket.off('game-error', handleGameError);
+    };
+  }, [socketService.socket, setGameCode, updatePlayers]);
 
   if (!isConnected || isInitializing) {
     return <LoadingSpinner />;
@@ -63,9 +75,6 @@ export default function AdminPanel() {
       rooms,
       clientId: sessionManager.getClientId()
     });
-
-    // Save admin session
-    sessionManager.saveSession(newGameCode, null, true);
   };
 
   return (
