@@ -15,7 +15,7 @@ export default function Lobby() {
   // Use socket events for real-time updates
   useSocketEvents();
 
-  // Initial session check
+  // Initial session check and socket registration
   useEffect(() => {
     const session = sessionManager.getSession();
     
@@ -52,6 +52,18 @@ export default function Lobby() {
       navigate(`/game/${playerId}`);
     }
   }, [phase, playerId, navigate]);
+
+  // Verify player is still in game
+  useEffect(() => {
+    if (players.length > 0 && playerId) {
+      const playerExists = players.some(p => p.id === playerId);
+      if (!playerExists && !sessionManager.wasPlayerRemoved()) {
+        console.log('Player no longer in game');
+        sessionManager.clearSession();
+        navigate('/', { replace: true });
+      }
+    }
+  }, [players, playerId, navigate]);
 
   const currentPlayer = players.find(p => p.id === playerId);
 
