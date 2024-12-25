@@ -8,7 +8,7 @@ export function useSocket() {
 
   useEffect(() => {
     const handleConnect = () => {
-      console.log('🔌 Socket connected');
+      console.log('Socket connected');
       setIsConnected(true);
 
       // Restore session if valid
@@ -24,12 +24,16 @@ export function useSocket() {
     };
 
     const handleDisconnect = () => {
-      console.log('🔌 Socket disconnected');
+      console.log('Socket disconnected');
       setIsConnected(false);
     };
 
-    // Set initial state
-    setIsConnected(socketService.socket.connected);
+    // Connect socket if not connected
+    if (!socketService.socket.connected) {
+      socketService.connect();
+    } else {
+      setIsConnected(true);
+    }
 
     socketService.socket.on('connect', handleConnect);
     socketService.socket.on('disconnect', handleDisconnect);

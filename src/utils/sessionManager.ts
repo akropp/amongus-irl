@@ -10,74 +10,59 @@ interface GameSession {
 
 class SessionManager {
   private readonly PREFIX = 'amongus_';
-  private readonly KEYS = {
-    CLIENT_ID: 'clientId',
-    GAME_CODE: 'gameCode',
-    PLAYER_ID: 'playerId',
-    PLAYER: 'player',
-    PHASE: 'phase',
-    IS_ADMIN: 'isAdmin'
-  };
+  private clientId: string;
 
   constructor() {
-    if (!this.getClientId()) {
-      this.setClientId(crypto.randomUUID());
-    }
+    this.clientId = this.getOrCreateClientId();
   }
 
-  private key(name: string): string {
-    return `${this.PREFIX}${name}`;
-  }
-
-  private setClientId(id: string): void {
-    sessionStorage.setItem(this.key(this.KEYS.CLIENT_ID), id);
+  private getOrCreateClientId(): string {
+    const stored = sessionStorage.getItem(`${this.PREFIX}clientId`);
+    if (stored) return stored;
+    
+    const newId = crypto.randomUUID();
+    sessionStorage.setItem(`${this.PREFIX}clientId`, newId);
+    return newId;
   }
 
   public getClientId(): string {
-    return sessionStorage.getItem(this.key(this.KEYS.CLIENT_ID)) || '';
+    return this.clientId;
   }
 
   public saveSession(gameCode: string, player: Player | null = null, isAdmin = false): void {
     const data = {
       gameCode,
-      isAdmin,
-      player,
       playerId: player?.id || null,
-      phase: 'lobby'
+      player,
+      phase: 'lobby',
+      isAdmin,
+      timestamp: Date.now()
     };
 
-    console.log('💾 Saving session:', data);
-
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== null) {
-        localStorage.setItem(
-          this.key(key), 
-          typeof value === 'object' ? JSON.stringify(value) : String(value)
-        );
-      }
-    });
+    console.log('Saving session:', data);
+    localStorage.setItem(`${this.PREFIX}session`, JSON.stringify(data));
   }
 
   public getSession(): GameSession {
-    const session = {
-      gameCode: localStorage.getItem(this.key(this.KEYS.GAME_CODE)),
-      playerId: localStorage.getItem(this.key(this.KEYS.PLAYER_ID)),
-      player: JSON.parse(localStorage.getItem(this.key(this.KEYS.PLAYER)) || 'null'),
-      phase: localStorage.getItem(this.key(this.KEYS.PHASE)),
-      isAdmin: localStorage.getItem(this.key(this.KEYS.IS_ADMIN)) === 'true'
-    };
+    const stored = localStorage.getItem(`${this.PREFIX}session`);
+    if (!stored) {
+      return {
+        gameCode: null,
+        playerId: null,
+        player: null,
+        phase: null,
+        isAdmin: false
+      };
+    }
 
-    console.log('📖 Retrieved session:', session);
+    const session = JSON.parse(stored);
+    console.log('Retrieved session:', session);
     return session;
   }
 
   public clearSession(): void {
-    console.log('🗑️ Clearing session');
-    Object.values(this.KEYS).forEach(key => {
-      if (key !== this.KEYS.CLIENT_ID) {
-        localStorage.removeItem(this.key(key));
-      }
-    });
+    console.log('Clearing session');
+    localStorage.removeItem(`${this.PREFIX}session`);
   }
 
   public isValidSession(): boolean {
@@ -86,7 +71,7 @@ class SessionManager {
       !!session.gameCode : 
       !!(session.gameCode && session.playerId && session.player);
     
-    console.log('🔍 Session validation:', { isValid, session });
+    console.log('Session validation:', { isValid, session });
     return isValid;
   }
 }

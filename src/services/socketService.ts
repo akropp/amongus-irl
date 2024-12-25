@@ -6,35 +6,40 @@ export default class SocketService {
 
   constructor() {
     console.log('🔌 Initializing socket service');
+    
+    // Initialize socket with auto-connect disabled
     this.socket = io(SERVER_URL, {
       ...SOCKET_OPTIONS,
-      autoConnect: true // Always auto-connect
+      autoConnect: false
     });
+
     this.setupLogging();
+    this.connect();
   }
 
   private setupLogging() {
     this.socket.onAny((event, ...args) => {
-      console.log(`📥 Socket received ${event}:`, args);
+      console.log(`📥 Received ${event}:`, args);
     });
 
     const originalEmit = this.socket.emit;
     this.socket.emit = function(event: string, ...args: any[]) {
-      console.log(`📤 Socket emitting ${event}:`, args);
+      console.log(`📤 Emitting ${event}:`, args);
       return originalEmit.apply(this, [event, ...args]);
     };
+  }
 
-    this.socket.on('connect', () => {
-      console.log('✅ Socket connected:', this.socket.id);
-    });
+  public connect() {
+    if (!this.socket.connected) {
+      console.log('🔌 Connecting socket...');
+      this.socket.connect();
+    }
+  }
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
-    });
-
-    this.socket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
-    });
+  public disconnect() {
+    if (this.socket.connected) {
+      this.socket.disconnect();
+    }
   }
 
   public isConnected(): boolean {
