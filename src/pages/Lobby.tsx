@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { usePageRefresh } from '../hooks/usePageRefresh';
+import { useSocketEvents } from '../hooks/useSocketEvents';
 import { useSocket } from '../hooks/useSocket';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { GameActions } from '../components/game/GameActions';
 import { LobbyPlayerList } from '../components/game/LobbyPlayerList';
-import { getGameSession } from '../utils/sessionHelpers';
+import { sessionManager } from '../utils/sessionManager';
 
 export default function Lobby() {
   const { playerId } = useParams();
@@ -14,38 +14,49 @@ export default function Lobby() {
   const navigate = useNavigate();
   const isConnected = useSocket();
   
-  usePageRefresh();
+  // Use socket events for real-time updates
+  useSocketEvents();
+
+  // Handle session restoration and validation
+  useEffect(() => {
+    const session = sessionManager.getSession();
+    
+    // Redirect to join page if no valid session
+    if (!session.gameCode || !session.playerId || !playerId) {
+      console.log('No valid session found, redirecting to join page');
+      sessionManager.clearSession();
+      navigate('/', { replace: true });
+      return;
+    }
+
+    // Register session with server if connected
+    if (isConnected) {
+      console.log('Registering lobby session');
+      socketService.socket.emit('register-session', {
+        gameCode: session.gameCode,
+        playerId: session.playerId,
+        clientId: sessionManager.getClientId()
+      });
+    }
+  }, [isConnected, playerId, navigate, socketService.socket]);
+
+  // Handle game phase changes
+  useEffect(() => {
+    if (phase === 'playing') {
+      navigate(`/game/${playerId}`);
+    }
+  }, [phase, playerId, navigate]);
 
   const currentPlayer = players.find(p => p.id === playerId);
 
-  useEffect(() => {
-    if (isConnected) {
-      const session = getGameSession();
-      if (session.gameCode && session.player && !currentPlayer) {
-        socketService.joinGame(session.gameCode, session.player);
-      }
-    }
-  }, [isConnected, currentPlayer, socketService]);
-
-  useEffect(() => {
-    if (!currentPlayer || !gameCode) {
-      navigate('/', { replace: true });
-    }
-  }, [currentPlayer, gameCode, navigate]);
-
-  if (phase === 'playing') {
-    navigate(`/game/${playerId}`);
-    return null;
-  }
-
-  if (!currentPlayer || !gameCode) {
+  if (!isConnected || !currentPlayer || !gameCode) {
     return <LoadingSpinner />;
   }
 
   return (
     <div className="min-h-screen bg-slate-900 p-8">
       <div className="max-w-2xl mx-auto space-y-8">
-        {playerId && <GameActions playerId={playerId} />}
+        <GameActions playerId={playerId} />
         
         <div className="text-center">
           <h1 className="text-3xl font-bold mb-4">Game Lobby</h1>

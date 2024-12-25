@@ -1,24 +1,13 @@
 import React from 'react';
 import { Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
-import { useGameEvents } from '../../hooks/useGameEvents';
-import { clearGameSession } from '../../utils/sessionHelpers';
 
 interface LobbyPlayerListProps {
   currentPlayerId?: string;
 }
 
 export function LobbyPlayerList({ currentPlayerId }: LobbyPlayerListProps) {
-  const { players, gameCode } = useGameStore();
-  const navigate = useNavigate();
-
-  useGameEvents((removedPlayerId) => {
-    if (removedPlayerId === currentPlayerId) {
-      clearGameSession();
-      navigate('/', { replace: true });
-    }
-  });
+  const { players } = useGameStore();
 
   return (
     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
