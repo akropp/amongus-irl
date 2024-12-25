@@ -1,3 +1,5 @@
+import { ManagerOptions, SocketOptions } from 'socket.io-client';
+
 // Get the current hostname
 const getCurrentHost = () => {
   if (typeof window === 'undefined') return '';
@@ -10,9 +12,14 @@ export const SERVER_URL = import.meta.env.VITE_SERVER_URL ||
     ? 'http://localhost:3000'
     : 'https://amongus-irl.onrender.com');
 
-export const SOCKET_OPTIONS = {
+export const SOCKET_OPTIONS: Partial<ManagerOptions & SocketOptions> = {
   transports: ['websocket', 'polling'],
-  path: '/socket.io'
+  path: '/socket.io',
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  timeout: 20000,
+  autoConnect: false
 };
 
 console.log('🌐 Socket server URL:', SERVER_URL);

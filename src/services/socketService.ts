@@ -7,15 +7,7 @@ export default class SocketService {
 
   constructor() {
     console.log('🔌 Initializing socket service');
-    
-    this.socket = io(SERVER_URL, {
-      ...SOCKET_OPTIONS,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      autoConnect: false
-    });
-
+    this.socket = io(SERVER_URL, SOCKET_OPTIONS);
     this.setupLogging();
     this.setupHandlers();
   }
@@ -26,10 +18,11 @@ export default class SocketService {
       console.log(`📥 Received ${event}:`, args);
     });
 
-    const emit = this.socket.emit;
+    // Wrap emit to log outgoing events
+    const originalEmit = this.socket.emit;
     this.socket.emit = function(event: string, ...args: any[]) {
       console.log(`📤 Emitting ${event}:`, args);
-      return emit.apply(this, [event, ...args]);
+      return originalEmit.apply(this, [event, ...args]);
     };
   }
 
@@ -50,20 +43,20 @@ export default class SocketService {
   }
 
   public connect(): void {
-    if (!this.connected) {
+    if (!this.connected && !this.socket.connected) {
       console.log('🔌 Connecting socket...');
       this.socket.connect();
     }
   }
 
   public disconnect(): void {
-    if (this.connected) {
+    if (this.connected || this.socket.connected) {
       console.log('🔌 Disconnecting socket...');
       this.socket.disconnect();
     }
   }
 
   public isConnected(): boolean {
-    return this.connected;
+    return this.connected && this.socket.connected;
   }
 }
