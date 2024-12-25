@@ -29,7 +29,7 @@ const socketService = new SocketService();
 
 export const useGameStore = create<GameStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
       socketService,
 
@@ -64,9 +64,7 @@ export const useGameStore = create<GameStore>()(
     {
       name: 'game-storage',
       partialize: (state) => ({
-        gameCode: state.gameCode,
-        maxPlayers: state.maxPlayers,
-        phase: state.phase
+        maxPlayers: state.maxPlayers
       })
     }
   )
