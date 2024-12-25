@@ -14,6 +14,11 @@ export default function setupSocketHandlers(io) {
       console.log('🎮 Creating game:', { code, maxPlayers, rooms, clientId });
       
       try {
+        // Check if game exists
+        if (gameManager.getGame(code)) {
+          throw new Error('Game already exists');
+        }
+
         const game = gameManager.createGame(code, maxPlayers, rooms);
         
         // Save admin session
@@ -24,7 +29,13 @@ export default function setupSocketHandlers(io) {
         });
         
         socket.join(code);
-        socket.emit('game-created', { code, maxPlayers, rooms, players: [] });
+        io.to(code).emit('game-created', { 
+          code, 
+          maxPlayers, 
+          rooms,
+          players: game.players 
+        });
+        
         console.log('✅ Game created:', code);
         
       } catch (error) {
@@ -42,6 +53,10 @@ export default function setupSocketHandlers(io) {
           throw new Error('Game not found');
         }
 
+        if (game.players.length >= game.maxPlayers) {
+          throw new Error('Game is full');
+        }
+
         const players = gameManager.addPlayer(gameCode, player);
         
         // Save player session
@@ -54,7 +69,11 @@ export default function setupSocketHandlers(io) {
         socket.join(gameCode);
         
         // Send success to joining player
-        socket.emit('join-game-success', { gameCode, player, players });
+        socket.emit('join-game-success', { 
+          gameCode, 
+          player, 
+          players 
+        });
         
         // Broadcast updated player list to all in game
         io.to(gameCode).emit('players-updated', players);
@@ -96,6 +115,58 @@ export default function setupSocketHandlers(io) {
         
       } catch (error) {
         console.error('❌ Registration error:', error);
+        socket.emit('game-error', { message: error.message });
+      }
+    });
+
+    socket.on('remove-player', ({ gameCode, playerId, clientId, isAdmin }) => {
+      console.log('👋 Remove player:', { gameCode, playerId, clientId, isAdmin });
+      
+      try {
+        const game = gameManager.getGame(gameCode);
+        if (!game) {
+          throw new Error('Game not found');
+        }
+
+        const session = sessionManager.getSession(clientId);
+        if (!session) {
+          throw new Error('Invalid session');
+        }
+
+        // Only allow admin or the player themselves to remove
+        if (!isAdmin && session.playerId !== playerId) {
+          throw new Error('Unauthorized');
+        }
+
+        const players = gameManager.removePlayer(gameCode, playerId);
+        
+        // Notify all clients in the game
+        io.to(gameCode).emit('players-updated', players);
+        socket.to(gameCode).emit('player-removed', { playerId });
+        
+        console.log('✅ Player removed:', playerId);
+        
+      } catch (error) {
+        console.error('❌ Remove error:', error);
+        socket.emit('game-error', { message: error.message });
+      }
+    });
+
+    socket.on('end-game', ({ code }) => {
+      console.log('🏁 End game:', code);
+      
+      try {
+        const game = gameManager.getGame(code);
+        if (!game) {
+          throw new Error('Game not found');
+        }
+
+        gameManager.endGame(code);
+        io.to(code).emit('game-ended');
+        console.log('✅ Game ended:', code);
+        
+      } catch (error) {
+        console.error('❌ End game error:', error);
         socket.emit('game-error', { message: error.message });
       }
     });
