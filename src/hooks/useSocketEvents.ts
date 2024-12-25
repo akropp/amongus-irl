@@ -13,7 +13,7 @@ export function useSocketEvents(isAdmin = false) {
       console.log('Socket connected, checking session...');
       const session = sessionManager.getSession();
       
-      if (session.isValid()) {
+      if (sessionManager.isValidSession()) {
         console.log('Restoring session:', { 
           gameCode: session.gameCode, 
           playerId: session.playerId,
