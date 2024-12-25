@@ -68,6 +68,7 @@ export default function JoinGame() {
       sessionManager.saveSession(data.gameCode, data.player);
       
       setIsLoading(false);
+      // Navigate to lobby with replace to prevent back navigation
       navigate(`/lobby/${data.player.id}`, { replace: true });
     };
 
