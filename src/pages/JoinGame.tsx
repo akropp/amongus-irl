@@ -21,6 +21,7 @@ export default function JoinGame() {
     sessionManager.clearSession();
   }, [reset]);
 
+  // Update the handleJoinGame function
   const handleJoinGame = () => {
     setError('');
     setIsLoading(true);
@@ -48,8 +49,8 @@ export default function JoinGame() {
       tasks: []
     };
 
-    // Save initial session
-    sessionManager.saveSession(normalizedCode, newPlayer);
+    // Save initial session without game code
+    sessionManager.saveSession(newPlayer, false);
     
     // Emit join event
     socketService.socket.emit('join-game', {

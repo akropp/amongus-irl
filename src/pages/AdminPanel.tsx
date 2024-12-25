@@ -35,7 +35,7 @@ export default function AdminPanel() {
       console.log('Game created:', data);
       setGameCode(data.code);
       updatePlayers(data.players);
-      sessionManager.saveSession(data.code, null, true);
+      sessionManager.saveSession(null, true);
     };
 
     const handleGameState = (state) => {

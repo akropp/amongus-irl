@@ -1,12 +1,9 @@
 import { Player } from '../types/game';
 
 interface GameSession {
-  gameCode: string | null;
   playerId: string | null;
   player: Player | null;
-  phase: string | null;
   isAdmin: boolean;
-  wasRemoved?: boolean;
 }
 
 class SessionManager {
@@ -14,7 +11,6 @@ class SessionManager {
   private readonly clientId: string;
 
   constructor() {
-    // Create or retrieve persistent client ID
     this.clientId = this.getOrCreateClientId();
   }
 
@@ -31,14 +27,11 @@ class SessionManager {
     return this.clientId;
   }
 
-  public saveSession(gameCode: string, player: Player | null = null, isAdmin = false): void {
+  public saveSession(player: Player | null = null, isAdmin = false): void {
     const session: GameSession = {
-      gameCode,
       playerId: player?.id || null,
       player,
-      phase: 'lobby',
-      isAdmin,
-      wasRemoved: false
+      isAdmin
     };
 
     console.log('Saving session:', session);
@@ -49,38 +42,21 @@ class SessionManager {
     const stored = sessionStorage.getItem(`${this.PREFIX}session`);
     if (!stored) {
       return {
-        gameCode: null,
         playerId: null,
         player: null,
-        phase: null,
-        isAdmin: false,
-        wasRemoved: false
+        isAdmin: false
       };
     }
 
     return JSON.parse(stored);
   }
 
-  public clearSession(wasRemoved = false): void {
-    const session = this.getSession();
-    sessionStorage.setItem(`${this.PREFIX}session`, JSON.stringify({
-      ...session,
-      wasRemoved
-    }));
-  }
-
-  public wasPlayerRemoved(): boolean {
-    return this.getSession().wasRemoved || false;
+  public clearSession(): void {
+    sessionStorage.removeItem(`${this.PREFIX}session`);
   }
 
   public isValidSession(): boolean {
     const session = this.getSession();
-    if (session.wasRemoved) return false;
-    
-    return session.isAdmin ? 
-      !!session.gameCode : 
-      !!(session.gameCode && session.playerId && session.player);
+    return session.isAdmin || !!(session.playerId && session.player);
   }
 }
-
-export const sessionManager = new SessionManager();
